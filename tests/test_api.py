@@ -1,0 +1,33 @@
+import asyncio
+import os
+from fastapi.testclient import TestClient
+from app.main import app
+from app.models import Candidate,RecommendationRequest
+from app.recommend import eligible,recommend
+
+client=TestClient(app)
+
+def test_health():
+    assert client.get('/health').json()=={'status':'ok'}
+
+def test_mock_returns_ten():
+    os.environ['PLACES_PROVIDER']='mock'
+    response=client.post('/api/v1/recommendations',json={'city':'Calgary','province':'AB','children_ages':[2,6], 'interests':['nature']})
+    assert response.status_code==200
+    data=response.json()
+    assert data['count']==10
+    assert data['mode']=='mock'
+    assert all(x['source']=='mock' for x in data['recommendations'])
+
+def test_invalid_age():
+    r=client.post('/api/v1/recommendations',json={'city':'Calgary','province':'AB','children_ages':[18]})
+    assert r.status_code==422
+
+def test_free_budget_excludes_unknown():
+    r=RecommendationRequest(city='Calgary',province='AB',children_ages=[4],budget='free')
+    assert not eligible(Candidate(place_id='a',name='A',address='x',source='mock'),r)
+
+def test_model_never_fabricates_ten():
+    r=RecommendationRequest(city='Calgary',province='AB',children_ages=[4])
+    c=Candidate(place_id='a',name='A',address='x',source='mock')
+    assert len(asyncio.run(recommend([c],r)))==1

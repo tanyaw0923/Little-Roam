@@ -1,0 +1,19 @@
+{
+  "activities": [
+    {
+      "source_id": "little_roam_editorial",
+      "activity_id": "sample-not-real-001",
+      "city": "Calgary",
+      "province": "AB",
+      "name": "Example Only - Replace With Verified Real Activity",
+      "address": "Example address only, Calgary, AB",
+      "activity_type": "indoor",
+      "categories": ["science", "museum"],
+      "price_category": "any",
+      "min_age": 3,
+      "max_age": 12,
+      "source_url": "https://example.com/activity-information",
+      "active": false
+    }
+  ]
+}
