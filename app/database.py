@@ -3,6 +3,7 @@ import os
 import asyncio
 from fastapi import HTTPException
 from .models import Candidate, RecommendationRequest
+from .geo import bounding_box, origin_for, straight_line_km
 
 DDL = """
 CREATE TABLE IF NOT EXISTS activities (
@@ -41,20 +42,53 @@ def require_db_url():
 def _fetch(r: RecommendationRequest):
     import psycopg
     from psycopg.rows import dict_row
-    with psycopg.connect(require_db_url(),row_factory=dict_row,connect_timeout=8) as conn:
+
+    with psycopg.connect(require_db_url(), row_factory=dict_row, connect_timeout=8) as conn:
         with conn.cursor() as cur:
-            cur.execute("""SELECT source_id, activity_id, name, address, latitude, longitude,
-                                  website_url,activity_type,categories,price_category,min_age,max_age
-                           FROM activities WHERE active = TRUE AND province=%s AND lower(city)=lower(%s)
-                           ORDER BY updated_at DESC, activity_id LIMIT 500""",
-                        (r.province,r.city))
-            rows=cur.fetchall()
-    return [Candidate(place_id=f"{x['source_id']}:{x['activity_id']}",
-                      name=x['name'],address=x['address'],latitude=x['latitude'],
-                      longitude=x['longitude'],website_url=x['website_url'],
-                      activity_type=x['activity_type'],categories=x['categories'],
-                      price_category=x['price_category'],min_age=x['min_age'],
-                      max_age=x['max_age'],source='curated') for x in rows]
+            if r.search_scope == 'regional':
+                # Do not invent locations for records that have no coordinates.
+                origin = origin_for(r.province, r.city)
+                if origin is None:
+                    raise ValueError('Unsupported regional search origin')
+                min_lat, max_lat, min_lon, max_lon = bounding_box(*origin, r.radius_km)
+                cur.execute("""SELECT source_id, activity_id, name, address, latitude, longitude,
+                                      website_url, activity_type, categories, price_category,
+                                      min_age, max_age
+                               FROM activities
+                               WHERE active = TRUE AND province = %s
+                                 AND latitude BETWEEN %s AND %s
+                                 AND longitude BETWEEN %s AND %s
+                               ORDER BY updated_at DESC, activity_id
+                               LIMIT 10000""",
+                            (r.province, min_lat, max_lat, min_lon, max_lon))
+            else:
+                cur.execute("""SELECT source_id, activity_id, name, address, latitude, longitude,
+                                      website_url, activity_type, categories, price_category,
+                                      min_age, max_age
+                               FROM activities
+                               WHERE active = TRUE AND province = %s
+                                 AND lower(city) = lower(%s)
+                               ORDER BY updated_at DESC, activity_id
+                               LIMIT 500""",
+                            (r.province, r.city))
+            rows = cur.fetchall()
+
+    candidates = []
+    for x in rows:
+        distance = None
+        if r.search_scope == 'regional':
+            distance = straight_line_km(*origin, x['latitude'], x['longitude'])
+            if distance > r.radius_km:
+                continue
+        candidates.append(Candidate(
+            place_id=f"{x['source_id']}:{x['activity_id']}",
+            name=x['name'], address=x['address'],
+            latitude=x['latitude'], longitude=x['longitude'],
+            distance_km=round(distance, 1) if distance is not None else None,
+            website_url=x['website_url'], activity_type=x['activity_type'],
+            categories=x['categories'], price_category=x['price_category'],
+            min_age=x['min_age'], max_age=x['max_age'], source='curated'))
+    return candidates
 
 async def database_candidates(r: RecommendationRequest):
     try:
