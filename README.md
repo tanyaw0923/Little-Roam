@@ -63,6 +63,46 @@ Open `/docs` for interactive Swagger documentation. In Cloud Shell, use Web Prev
 
 Health check: `GET /health`, expected `{"status":"ok"}`.
 
+### Restart FastAPI in Google Cloud Shell (Supabase + Routes API)
+
+Use this workflow when you reopen Cloud Shell or restart the Little Roam recommendation API. The Cloud Run **daily Calgary importer** runs separately; restarting FastAPI here does not affect its Scheduler trigger.
+
+```bash
+cd ~/Little-Roam/Little-Roam
+git pull --ff-only origin main
+
+# Run tests before starting the local API.
+python -m pytest -q
+
+# Use the real Supabase activity records, rather than fictional mock venues.
+export PLACES_PROVIDER=postgres
+
+# Read secrets into environment variables without printing their values.
+# Requires Secret Manager access for your signed-in Cloud Shell identity.
+export DATABASE_URL="$(gcloud secrets versions access latest --secret=little-roam-database-url)"
+export GOOGLE_ROUTES_API_KEY="$(gcloud secrets versions access latest --secret=little-roam-routes-api-key)"
+
+# Fail early rather than launching with empty credentials.
+test -n "$DATABASE_URL" && test -n "$GOOGLE_ROUTES_API_KEY" || {
+  echo "Missing required secret; check project, permissions and enabled secret versions" >&2
+  exit 1
+}
+
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+If dependencies are missing, install them first using `python -m pip install -r requirements.txt`. If the startup command reports that port 8000 is already in use, stop the existing Uvicorn process (`Ctrl+C` in its terminal) before restarting.
+
+Open **Cloud Shell → Web Preview → Preview on port 8000**, then visit `/docs`. If the preview URL includes `?authuser=0`, use `.../docs?authuser=0` (not `...?authuser=0/docs`). In Swagger, use **POST `/api/v1/recommendations`** and the regional sample request below. Expect `drive_minutes` and road `distance_km` for results with valid routes. Regional requests evaluate at most **10 destinations** per search, and can return fewer than 10 recommendations.
+
+You must have enabled `routes.googleapis.com`, configured a Routes API-restricted key, and stored that key in Secret Manager for regional requests. To enable the service from Cloud Shell:
+
+```bash
+gcloud services enable routes.googleapis.com --project="$(gcloud config get-value project)"
+```
+
+**Security:** Never paste database URLs or API key values into GitHub, issues, logs, or chat. Secrets exported in Cloud Shell persist in that shell session; stop the server and run `unset DATABASE_URL GOOGLE_ROUTES_API_KEY` when finished. For production, inject the secrets into the **FastAPI Cloud Run service** using Secret Manager, not into client-side code. The API service has not been confirmed deployed with this new regional feature.
+
 ### Recommend family activities
 
 `POST /api/v1/recommendations`
@@ -91,14 +131,7 @@ Set `PLACES_PROVIDER`:
 | `postgres` | `DATABASE_URL` | Supabase PostgreSQL curated/licensed activities |
 | `google` | `GOOGLE_MAPS_API_KEY` | Live Google Places Text Search (usage charges possible) |
 
-The PostgreSQL schema is defined in `app/database.py`. Connect with the **Supabase Session Pooler** URL; do not put credentials in the repository. In Cloud Shell, for a one-session test:
-
-```bash
-export PLACES_PROVIDER=postgres
-read -rsp "Supabase connection URL: " DATABASE_URL; echo
-export DATABASE_URL
-uvicorn app.main:app --host 0.0.0.0 --port 8000
-```
+The PostgreSQL schema is defined in `app/database.py`. Use the **Supabase Session Pooler** connection URL and do not commit credentials. For the full Cloud Shell restart procedure, including both Secret Manager credentials, see **Restart FastAPI in Google Cloud Shell** above.
 
 The table should have row-level security enabled, and production access should use least-privilege database accounts. Store the production `DATABASE_URL` in Google Cloud Secret Manager. Rotate any credential that was previously exposed.
 
