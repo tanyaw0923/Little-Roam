@@ -2,7 +2,7 @@
 
 No guesswork: missing/error routes are excluded. Uses traffic-unaware route
 duration (not predicted live traffic). Google route results are not persisted.
-Only route at most 25 candidates per search to cap billable matrix elements.
+Only route at most 10 candidates per search to cap billable matrix elements.
 """
 import math
 import os
@@ -15,7 +15,7 @@ from .geo import origin_for, straight_line_km
 from .models import Candidate, RecommendationRequest
 
 ROUTE_MATRIX_URL = "https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix"
-MAX_ROUTE_ELEMENTS = 25
+MAX_ROUTE_ELEMENTS = 10
 MAX_GEO_CANDIDATES_KM = 250
 
 def _waypoint(lat: float, lon: float) -> dict:
@@ -47,6 +47,7 @@ def shortlist(candidates: list[Candidate], request: RecommendationRequest) -> li
 
 async def routes_for_candidates(candidates: list[Candidate], request: RecommendationRequest) -> list[Candidate]:
     """Attach genuine drive minutes/road kilometres; do not substitute aerial distances."""
+    candidates = candidates[:MAX_ROUTE_ELEMENTS]  # Enforce cost cap even when invoked directly.
     if not candidates:
         return []
     key = os.getenv("GOOGLE_ROUTES_API_KEY")
