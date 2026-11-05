@@ -13,7 +13,7 @@ class RecommendationRequest(BaseModel):
     activity_type: ActivityType = 'any'
     budget: Budget = 'any'
     search_scope: Literal['city', 'regional'] = 'city'
-    radius_km: int = Field(default=25, ge=1, le=200)
+    max_drive_minutes: Literal[30, 60, 120] = 60
     max_results: int = Field(default=10, ge=1, le=10)
 
     @model_validator(mode='after')
@@ -38,6 +38,7 @@ class Candidate(BaseModel):
     latitude: float | None = None
     longitude: float | None = None
     distance_km: float | None = None
+    drive_minutes: float | None = None
     google_maps_url: str | None = None
     website_url: str | None = None
     activity_type: ActivityType = 'any'
@@ -55,6 +56,7 @@ class Recommendation(BaseModel):
     website_url: str | None
     activity_type: ActivityType
     distance_km: float | None = None
+    drive_minutes: float | None = None
     admission_price_cad: float | None = None
     hours_verified: bool = False
     reason: str
