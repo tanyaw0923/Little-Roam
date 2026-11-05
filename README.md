@@ -10,10 +10,11 @@ Little Roam is an early-stage Python/FastAPI backend that recommends family outi
 - ✅ Supabase PostgreSQL connected and real Calgary attraction records tested during development
 - ✅ Calgary recreation-facilities importer run successfully in the development environment
 - ✅ Generic PostgreSQL JSON-feed refresh and unit tests in repository
-- ⏳ Calgary-specific importer **not yet committed** to this repository
-- ⏳ Scheduled Cloud Run ingestion, weather integration and public website not yet confirmed live
+- ✅ Calgary-specific importer is committed in `app/calgary_import.py`
+- ✅ Calgary Cloud Run daily importer deployed and Scheduler trigger configured (as reported in deployment setup)
+- ⏳ Weather integration and public website not yet deployed
 
-> The API is a working MVP, not a fully verified production activity recommender. Opening hours, prices, age suitability and search radius are not yet comprehensively verified/enforced.
+> The API is a working MVP, not a fully verified production activity recommender. Opening hours, prices and age suitability are not yet comprehensively verified. Regional routing is optional and only supports Calgary, Canmore and Banff origins.
 
 ## Architecture
 
@@ -29,7 +30,7 @@ FastAPI /api/v1/recommendations
        
 Approved activity data -> validation/upsert -> PostgreSQL
                           ^
-                   Cloud Run Job + Scheduler (planned)
+                   Cloud Run Job + Scheduler (Calgary configured)
 ```
 
 | Component | Technology |
@@ -39,7 +40,7 @@ Approved activity data -> validation/upsert -> PostgreSQL
 | Recommendations | Python matching/ranking + optional OpenAI |
 | Place discovery | Google Places API (New), optional |
 | Hosting | GCP Cloud Run |
-| Scheduled updates | Cloud Run Jobs + Cloud Scheduler (planned) |
+| Scheduled updates | Cloud Run Jobs + Cloud Scheduler (Calgary configured) |
 | Testing | pytest |
 
 ## Quick start
@@ -106,11 +107,11 @@ The table should have row-level security enabled, and production access should u
 - `app/refresh.py` reads an authorized HTTPS JSON activity feed and upserts records using stable IDs.
 - `examples/activities-feed.example.json` contains fictional sample data.
 - `POSTGRES_DAILY_REFRESH.md` documents the generic refresh workflow.
-- The Calgary-specific `app/calgary_import.py` has been run in Cloud Shell but **is not included in the current GitHub tree**. Push that file and its tests before building a production importer image.
+- `app/calgary_import.py` imports permitted Calgary recreation-facilities records with validation and stable-ID upserts. The Calgary Cloud Run Job and daily trigger have been configured.
 
-Planned daily pipeline: **Cloud Scheduler (6 AM America/Edmonton) → Cloud Run Job → validated Calgary/Canadian activity sources → Supabase PostgreSQL**.
+Calgary pipeline: **Cloud Scheduler (daily) → Cloud Run Job → validated Calgary recreation data → Supabase PostgreSQL**. Check recent Cloud Run execution logs to confirm each scheduled run succeeds.
 
-A scheduled production job and monitoring are not yet verified. Prefer incremental updates, record source attribution, and alert on failed jobs. Only store data you are licensed to retain; Google Places API content has additional caching/storage restrictions.
+Daily scheduler configuration is in place; routine execution health and monitoring are not yet verified. Prefer incremental updates, record source attribution, and alert on failed jobs. Only store data you are licensed to retain; Google Places API content has additional caching/storage restrictions.
 
 ## Deployment
 
@@ -126,10 +127,10 @@ python -m pytest -q
 
 ## Roadmap
 
-1. Commit and validate the Calgary importer, including source licensing and deduplication.
-2. Run a Cloud Run Job manually, then add a daily Scheduler trigger and logging.
+1. Monitor the scheduled Calgary importer and verify source licensing and deduplication.
+2. Expand ingestion to additional official Canmore and Banff sources.
 3. Add verified family-specific activity data: ages, pricing, opening times and event schedules.
-4. Enforce distance filters using PostGIS and integrate Canadian weather.
+4. Improve driving-time search candidate selection, routing cost controls and integrate Canadian weather.
 5. Add authentication, usage limits, evaluation, and the family-facing website.
 6. Expand to additional Canadian cities and bilingual support.
 
@@ -142,7 +143,7 @@ Little Roam is an independent project for Canadian families.
 
 ## Bow Valley: Canmore and Banff
 
-The repository includes an idempotent [Canmore and Banff venue seed](sql/seed_bow_valley.sql) and a [guide to official town data sources](BOW_VALLEY_DATA_SOURCES.md). Apply the SQL to Supabase for initial coverage. The six curated venues are not yet automatically refreshed; town event calendars require a separate dated-events model and access/licensing review. The current recommendation query selects a single city at a time.
+The repository includes an idempotent [Canmore and Banff venue seed](sql/seed_bow_valley.sql) and a [guide to official town data sources](BOW_VALLEY_DATA_SOURCES.md). Apply the SQL to Supabase for initial coverage. The six curated venues are not yet automatically refreshed; town event calendars require a separate dated-events model and access/licensing review. Single-city search is the default; optional regional mode supports driving-time searches.
 
 ## Regional recommendations by driving time
 
