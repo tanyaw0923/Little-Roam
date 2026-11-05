@@ -66,7 +66,26 @@ def test_preselection_discards_null_coordinates():
 def test_shortlist_caps_paid_matrix_elements():
     r = request(search_scope='regional')
     many = [candidate(str(i), 51.04, -114.08) for i in range(45)]
-    assert len(shortlist(many,r)) == 25
+    assert len(shortlist(many,r)) == 10
+
+
+def test_direct_route_call_is_capped_to_ten(monkeypatch):
+    monkeypatch.setenv('GOOGLE_ROUTES_API_KEY', 'fake-testing-key')
+    class FakeResponse:
+        def raise_for_status(self): pass
+        def json(self): return []
+    class FakeClient:
+        def __init__(self,*args,**kwargs): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self,*args): pass
+        async def post(self,url,headers,json):
+            assert len(json['destinations']) == 10
+            return FakeResponse()
+    monkeypatch.setattr('app.driving.httpx.AsyncClient', FakeClient)
+    result=asyncio.run(routes_for_candidates(
+        [candidate(str(i),51.04,-114.08) for i in range(15)],
+        request(search_scope='regional')))
+    assert result == []
 
 
 def test_duration_parse():
