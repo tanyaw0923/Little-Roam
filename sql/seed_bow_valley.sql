@@ -1,0 +1,45 @@
+-- Little Roam: initial Bow Valley curated venues.
+-- Source: official Town of Canmore and Town of Banff pages.
+-- These are permanent locations, NOT confirmation of an event, operating
+-- hours, availability, pricing, accessibility, or age eligibility.
+-- Do not overwrite the Calgary source. Re-running is idempotent.
+INSERT INTO public.activities
+(source_id,activity_id,city,province,name,address,activity_type,
+ categories,price_category,min_age,max_age,source_url,active)
+VALUES
+('town_canmore_curated','elevation_place','Canmore','AB',
+ 'Elevation Place','700 Railway Ave, Canmore, AB','indoor',
+ ARRAY['recreation','swimming','climbing','indoor'], 'any',NULL,NULL,
+ 'https://www.canmore.ca/your-community/recreation',true),
+('town_canmore_curated','quarry_lake','Canmore','AB',
+ 'Quarry Lake Park','Quarry Lake, Canmore, AB','outdoor',
+ ARRAY['nature','park','walking','picnic'], 'any',NULL,NULL,
+ 'https://www.canmore.ca/your-community/recreation/outdoor-recreation/parks-playgrounds-sport-fields',true),
+('town_canmore_curated','riverside_park','Canmore','AB',
+ 'Riverside Park','Riverside Park, Canmore, AB','outdoor',
+ ARRAY['nature','park','walking','picnic'], 'any',NULL,NULL,
+ 'https://www.canmore.ca/your-community/recreation/outdoor-recreation/parks-playgrounds-sport-fields',true),
+('town_banff_curated','fenlands','Banff','AB',
+ 'The Fenlands Banff Recreation Centre','100 Norquay Road, Banff, AB','indoor',
+ ARRAY['recreation','skating','sports','indoor'], 'any',NULL,NULL,
+ 'https://banff.ca/1156/Places-Around-Town',true),
+('town_banff_curated','recreation_grounds','Banff','AB',
+ 'Banff Recreation Grounds','100 Sundance Road, Banff, AB','outdoor',
+ ARRAY['park','playground','sports','picnic'], 'any',NULL,NULL,
+ 'https://banff.ca/1156/Places-Around-Town',true),
+('town_banff_curated','central_park','Banff','AB',
+ 'Central Park','Central Park, Banff, AB','outdoor',
+ ARRAY['park','playground','nature','walking','picnic'], 'any',NULL,NULL,
+ 'https://banff.ca/1156/Places-Around-Town',true)
+ON CONFLICT (source_id,activity_id) DO UPDATE SET
+  name=EXCLUDED.name,
+  address=EXCLUDED.address,
+  activity_type=EXCLUDED.activity_type,
+  categories=EXCLUDED.categories,
+  price_category=EXCLUDED.price_category,
+  min_age=EXCLUDED.min_age,
+  max_age=EXCLUDED.max_age,
+  source_url=EXCLUDED.source_url,
+  active=EXCLUDED.active,
+  last_seen_at=NOW(),
+  updated_at=NOW();
