@@ -28,12 +28,12 @@ The response provides `drive_minutes` and road `distance_km` for regional result
 
 1. Query authorized, geolocated PostgreSQL records within a generous **250 km aerial** prefilter around the origin.
 2. Apply activity type, price and age filters; rank by interest relevance and aerial proximity.
-3. Shortlist **at most 25** destinations per request; missing-coordinates or far-out locations are excluded.
+3. Shortlist **at most 10** destinations per request; missing-coordinates or far-out locations are excluded.
 4. Request one origin-to-many-destinations route matrix from Google Routes (Essentials tier, no traffic-aware mode).
 5. Keep only destinations with a returned route duration within the requested threshold.
 6. Rank and return up to 10 activities. Missing/error routes are never converted into invented drive times.
 
-This is an MVP optimization: the top-25 preselection and 250 km prefilter may omit valid results. In particular, **a regional search can return fewer than 10 results even if more suitable venues exist**. Expand to staged routing and database geospatial indexes once usage justifies it.
+This is an MVP optimization: the top-10 preselection and 250 km prefilter may omit valid results. In particular, **a regional search can return fewer than 10 results even if more suitable venues exist**. Expand to staged routing and database geospatial indexes once usage justifies it.
 
 ## Configure the Google Routes API
 
@@ -51,7 +51,7 @@ To enable the public API, add authentication, rate limits and a request budget f
 
 ## Pricing and quotas
 
-Google Routes Compute Route Matrix is billed **per element**, meaning one origin times each destination. A maximum of 25 destinations consumes up to **25 elements/search**. Current published Essentials global pricing lists **10,000 free monthly elements** and then **US$5 per 1,000 elements** in the first paid tier, or approximately **US$0.125 for a 25-destination request after free usage**. Other charges may apply. Set daily quotas and monitor costs.
+Google Routes Compute Route Matrix is billed **per element**, meaning one origin times each destination. A maximum of 10 destinations consumes up to **10 elements/search**. Current published Essentials global pricing lists **10,000 free monthly elements** and then **US$5 per 1,000 elements** in the first paid tier, or approximately **US$0.05 for a 10-destination request after free usage**. Other charges may apply. Set daily quotas and monitor costs.
 
 Official references:
 - [Google Routes API usage & billing](https://developers.google.com/maps/documentation/routes/usage-and-billing)
