@@ -1,5 +1,5 @@
 from typing import Literal
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 Province = Literal['AB','BC','ON','QC','MB','SK','NS','NB','NL','PE','YT','NT','NU']
 ActivityType = Literal['any','indoor','outdoor']
@@ -12,8 +12,17 @@ class RecommendationRequest(BaseModel):
     interests: list[str] = Field(default_factory=list, max_length=12)
     activity_type: ActivityType = 'any'
     budget: Budget = 'any'
-    radius_km: int = Field(default=25, ge=1, le=50)
+    search_scope: Literal['city', 'regional'] = 'city'
+    radius_km: int = Field(default=25, ge=1, le=200)
     max_results: int = Field(default=10, ge=1, le=10)
+
+    @model_validator(mode='after')
+    def ensure_regional_origin(self):
+        if self.search_scope == 'regional':
+            from .geo import origin_for
+            if origin_for(self.province, self.city) is None:
+                raise ValueError('Regional search currently supports Calgary, Canmore, and Banff, AB as origins')
+        return self
 
     @field_validator('children_ages')
     @classmethod
@@ -28,6 +37,7 @@ class Candidate(BaseModel):
     address: str
     latitude: float | None = None
     longitude: float | None = None
+    distance_km: float | None = None
     google_maps_url: str | None = None
     website_url: str | None = None
     activity_type: ActivityType = 'any'
