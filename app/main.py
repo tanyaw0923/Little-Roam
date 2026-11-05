@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from .models import RecommendationRequest, RecommendationResponse
 from .discovery import discover
 from .recommend import recommend
+from .driving import filter_by_driving_time
 
 app=FastAPI(title='Little Roam Recommendation API',version='0.1.0')
 
@@ -14,13 +15,14 @@ def health():
 @app.post('/api/v1/recommendations',response_model=RecommendationResponse)
 async def recommendations(payload:RecommendationRequest):
     mode,candidates=await discover(payload)
+    candidates=await filter_by_driving_time(candidates,payload)
     results=await recommend(candidates,payload)
     warnings=['Demo data only; no listed attractions are real.' if mode=='mock' else
               'Activity details require independent verification from permitted sources; confirm hours, prices and age suitability.',
-              'Distances and radius are not yet enforced; price filters exclude unknown-price venues.',
+              'Unknown price is excluded from free-only requests; age and facility information may be incomplete.',
               'Weather and verified opening hours are not integrated in v0.1.']
     if payload.search_scope == 'regional':
-        warnings.append('Regional distances are straight-line from an approximate town centre, not driving distances. Records without coordinates are excluded.')
+        warnings.append('Driving durations are Google Routes traffic-unaware estimates from an approximate city centre, not from a family home or live traffic. At most 25 candidate routes are evaluated; missing-coordinate and unavailable routes are excluded.')
     if len(results)<payload.max_results:
         warnings.append('Fewer eligible places found than requested; no fabricated recommendations added.')
     return RecommendationResponse(city=payload.city,province=payload.province,mode=mode,
