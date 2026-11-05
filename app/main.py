@@ -22,7 +22,7 @@ async def recommendations(payload:RecommendationRequest):
               'Unknown price is excluded from free-only requests; age and facility information may be incomplete.',
               'Weather and verified opening hours are not integrated in v0.1.']
     if payload.search_scope == 'regional':
-        warnings.append('Driving durations are Google Routes traffic-unaware estimates from an approximate city centre, not from a family home or live traffic. At most 25 candidate routes are evaluated; missing-coordinate and unavailable routes are excluded.')
+        warnings.append('Driving durations are Google Routes traffic-unaware estimates from an approximate city centre, not from a family home or live traffic. At most 10 candidate routes are evaluated; missing-coordinate and unavailable routes are excluded.')
     if len(results)<payload.max_results:
         warnings.append('Fewer eligible places found than requested; no fabricated recommendations added.')
     return RecommendationResponse(city=payload.city,province=payload.province,mode=mode,
