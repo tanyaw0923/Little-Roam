@@ -19,6 +19,8 @@ async def recommendations(payload:RecommendationRequest):
               'Activity details require independent verification from permitted sources; confirm hours, prices and age suitability.',
               'Distances and radius are not yet enforced; price filters exclude unknown-price venues.',
               'Weather and verified opening hours are not integrated in v0.1.']
+    if payload.search_scope == 'regional':
+        warnings.append('Regional distances are straight-line from an approximate town centre, not driving distances. Records without coordinates are excluded.')
     if len(results)<payload.max_results:
         warnings.append('Fewer eligible places found than requested; no fabricated recommendations added.')
     return RecommendationResponse(city=payload.city,province=payload.province,mode=mode,
