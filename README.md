@@ -145,21 +145,16 @@ Little Roam is an independent project for Canadian families.
 
 The repository includes an idempotent [Canmore and Banff venue seed](sql/seed_bow_valley.sql) and a [guide to official town data sources](BOW_VALLEY_DATA_SOURCES.md). Apply the SQL to Supabase for initial coverage. The six curated venues are not yet automatically refreshed; town event calendars require a separate dated-events model and access/licensing review. The current recommendation query selects a single city at a time.
 
-## Regional activity search (Calgary / Canmore / Banff)
+## Regional recommendations by driving time
 
-The recommendation endpoint now supports two search scopes:
-
-- `search_scope: "city"` (default): exact city matching, retains activities without coordinates.
-- `search_scope: "regional"`: selects geolocated activities within `radius_km` (1–200) of an approximate Calgary, Canmore, or Banff town centre. For now, regional search origins are limited to these three Alberta communities. Other regional origins return HTTP 422.
-
-Example request:
+The backend supports a **30-, 60-, or 120-minute** regional driving preference from an approximate Calgary, Canmore, or Banff centre. It uses the paid Google Routes API; the existing single-city search remains the default and does **not** require a Routes key.
 
 ```json
 {
   "city": "Calgary",
   "province": "AB",
   "search_scope": "regional",
-  "radius_km": 150,
+  "max_drive_minutes": 120,
   "children_ages": [2, 6],
   "interests": ["nature", "recreation"],
   "activity_type": "any",
@@ -168,12 +163,12 @@ Example request:
 }
 ```
 
-The API returns `distance_km` for regional results. Distances are **straight-line from town centre**, *not driving distance or time*. Null-coordinate records are excluded from regional searches, not assigned an estimated location. Rankings still prioritize keyword relevance, then nearer matches for ties.
+For regional results, `drive_minutes` is the traffic-unaware Google driving duration and `distance_km` is road distance. These are calculated **from an approximate town centre**, not from the family's actual location. No route, unknown coordinates, or a failed Routes call will ever be replaced with a guessed drive time.
 
-To enable the six seeded Bow Valley locations in regional mode, apply both scripts in Supabase SQL Editor:
-1. [Bow Valley venues](sql/seed_bow_valley.sql), if not yet applied.
-2. [Bow Valley coordinates](sql/backfill_bow_valley_coordinates.sql).
+To enable:
+1. Use `PLACES_PROVIDER=postgres` and your Supabase `DATABASE_URL`.
+2. Run the [Bow Valley seed](sql/seed_bow_valley.sql) and [coordinate backfill](sql/backfill_bow_valley_coordinates.sql) if not already applied.
+3. Enable Google Routes API and supply `GOOGLE_ROUTES_API_KEY` securely through GCP Secret Manager.
+4. Execute the tests, then redeploy the **FastAPI Cloud Run service**. The existing Calgary daily importer and Cloud Scheduler trigger remain unchanged.
 
-The coordinate backfill uses mapped feature points from OpenStreetMap-derived sources; attribution: © OpenStreetMap contributors (https://www.openstreetmap.org/copyright). These are not necessarily entrance coordinates. Verify before navigation.
-
-The Calgary recreation importer already supplies coordinates for source records that have valid geometries. The current `calgary_import` job remains unchanged. For production nationwide coverage, switch from fixed town centres to a validated Canadian geocoding service and PostGIS indexing. See `tests/test_regional_search.py` for distance/filter contract checks.
+See [DRIVING_TIME_SEARCH.md](DRIVING_TIME_SEARCH.md) for complete setup, API quota/cost controls and limitations. To bound costs, the MVP routes at most **25 candidate destinations per search**; this may omit relevant venues. Driving times are not traffic-aware or departure-time-specific. Nationwide origins and postal-code routing are future work.
