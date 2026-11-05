@@ -140,3 +140,7 @@ Recommendations are informational, not guarantees of admission, hours, safety or
 
 ---
 Little Roam is an independent project for Canadian families.
+
+## Bow Valley: Canmore and Banff
+
+The repository includes an idempotent [Canmore and Banff venue seed](sql/seed_bow_valley.sql) and a [guide to official town data sources](BOW_VALLEY_DATA_SOURCES.md). Apply the SQL to Supabase for initial coverage. The six curated venues are not yet automatically refreshed; town event calendars require a separate dated-events model and access/licensing review. The current recommendation query selects a single city at a time.
