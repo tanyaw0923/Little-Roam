@@ -48,7 +48,7 @@ async def explain(selected:list[Candidate],r:RecommendationRequest)->dict[str,tu
 
 async def recommend(candidates:list[Candidate],r:RecommendationRequest)->list[Recommendation]:
     eligible_candidates=[c for c in candidates if eligible(c,r)]
-    ordered=sorted(eligible_candidates,key=lambda c:(-score_candidate(c,r),c.place_id))[:r.max_results]
+    ordered=sorted(eligible_candidates,key=lambda c:(-score_candidate(c,r),c.distance_km if c.distance_km is not None else float('inf'),c.place_id))[:r.max_results]
     narratives=await explain(ordered,r)
     out=[]
     for c in ordered:
@@ -57,6 +57,6 @@ async def recommend(candidates:list[Candidate],r:RecommendationRequest)->list[Re
             'Confirm operating hours, admission fees, and child facilities before visiting.'))
         out.append(Recommendation(place_id=c.place_id,name=c.name,address=c.address,
             google_maps_url=c.google_maps_url,website_url=c.website_url,
-            activity_type=c.activity_type,reason=reason,parent_tip=tip,
+            activity_type=c.activity_type,distance_km=c.distance_km,reason=reason,parent_tip=tip,
             source=c.source,score=score_candidate(c,r)))
     return out
