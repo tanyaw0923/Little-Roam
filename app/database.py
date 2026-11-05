@@ -3,7 +3,7 @@ import os
 import asyncio
 from fastapi import HTTPException
 from .models import Candidate, RecommendationRequest
-from .geo import bounding_box, origin_for, straight_line_km
+from .geo import bounding_box, origin_for
 
 DDL = """
 CREATE TABLE IF NOT EXISTS activities (
@@ -50,7 +50,7 @@ def _fetch(r: RecommendationRequest):
                 origin = origin_for(r.province, r.city)
                 if origin is None:
                     raise ValueError('Unsupported regional search origin')
-                min_lat, max_lat, min_lon, max_lon = bounding_box(*origin, r.radius_km)
+                min_lat, max_lat, min_lon, max_lon = bounding_box(*origin, 250)
                 cur.execute("""SELECT source_id, activity_id, name, address, latitude, longitude,
                                       website_url, activity_type, categories, price_category,
                                       min_age, max_age
@@ -75,16 +75,10 @@ def _fetch(r: RecommendationRequest):
 
     candidates = []
     for x in rows:
-        distance = None
-        if r.search_scope == 'regional':
-            distance = straight_line_km(*origin, x['latitude'], x['longitude'])
-            if distance > r.radius_km:
-                continue
         candidates.append(Candidate(
             place_id=f"{x['source_id']}:{x['activity_id']}",
             name=x['name'], address=x['address'],
             latitude=x['latitude'], longitude=x['longitude'],
-            distance_km=round(distance, 1) if distance is not None else None,
             website_url=x['website_url'], activity_type=x['activity_type'],
             categories=x['categories'], price_category=x['price_category'],
             min_age=x['min_age'], max_age=x['max_age'], source='curated'))
