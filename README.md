@@ -144,3 +144,36 @@ Little Roam is an independent project for Canadian families.
 ## Bow Valley: Canmore and Banff
 
 The repository includes an idempotent [Canmore and Banff venue seed](sql/seed_bow_valley.sql) and a [guide to official town data sources](BOW_VALLEY_DATA_SOURCES.md). Apply the SQL to Supabase for initial coverage. The six curated venues are not yet automatically refreshed; town event calendars require a separate dated-events model and access/licensing review. The current recommendation query selects a single city at a time.
+
+## Regional activity search (Calgary / Canmore / Banff)
+
+The recommendation endpoint now supports two search scopes:
+
+- `search_scope: "city"` (default): exact city matching, retains activities without coordinates.
+- `search_scope: "regional"`: selects geolocated activities within `radius_km` (1–200) of an approximate Calgary, Canmore, or Banff town centre. For now, regional search origins are limited to these three Alberta communities. Other regional origins return HTTP 422.
+
+Example request:
+
+```json
+{
+  "city": "Calgary",
+  "province": "AB",
+  "search_scope": "regional",
+  "radius_km": 150,
+  "children_ages": [2, 6],
+  "interests": ["nature", "recreation"],
+  "activity_type": "any",
+  "budget": "any",
+  "max_results": 10
+}
+```
+
+The API returns `distance_km` for regional results. Distances are **straight-line from town centre**, *not driving distance or time*. Null-coordinate records are excluded from regional searches, not assigned an estimated location. Rankings still prioritize keyword relevance, then nearer matches for ties.
+
+To enable the six seeded Bow Valley locations in regional mode, apply both scripts in Supabase SQL Editor:
+1. [Bow Valley venues](sql/seed_bow_valley.sql), if not yet applied.
+2. [Bow Valley coordinates](sql/backfill_bow_valley_coordinates.sql).
+
+The coordinate backfill uses mapped feature points from OpenStreetMap-derived sources; attribution: © OpenStreetMap contributors (https://www.openstreetmap.org/copyright). These are not necessarily entrance coordinates. Verify before navigation.
+
+The Calgary recreation importer already supplies coordinates for source records that have valid geometries. The current `calgary_import` job remains unchanged. For production nationwide coverage, switch from fixed town centres to a validated Canadian geocoding service and PostGIS indexing. See `tests/test_regional_search.py` for distance/filter contract checks.
