@@ -1,4 +1,7 @@
 import asyncio
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
+from pydantic import ValidationError
 import pytest
 import httpx
 
@@ -8,7 +11,7 @@ from app.recommend import recommend, score_candidate
 
 
 def request():
-    return RecommendationRequest(city="Calgary", province="AB", children_ages=[2],
+    return RecommendationRequest(city="Calgary", children_ages=[2],
                                  search_scope="regional", max_drive_minutes=120)
 
 
@@ -26,7 +29,7 @@ def test_nearest_weather_town_is_destination_not_origin():
 def test_adverse_weather_favors_indoor(monkeypatch):
     monkeypatch.setenv("WEATHER_PROVIDER", "open_meteo")
     _CACHE.clear()
-    async def fake_forecast(town):
+    async def fake_forecast(town, outing_date=None):
         return interpret_daily({
             "time": ["2026-11-06"], "temperature_2m_max": [-18],
             "precipitation_probability_max": [80], "wind_speed_10m_max": [42],
@@ -57,7 +60,7 @@ def test_mild_weather_favors_outdoor(monkeypatch):
 
 def test_weather_failure_does_not_block_recommendations(monkeypatch):
     monkeypatch.setenv("WEATHER_PROVIDER","open_meteo")
-    async def error(town):
+    async def error(town, outing_date=None):
         raise httpx.TimeoutException("unavailable")
     monkeypatch.setattr("app.weather.get_town_forecast",error)
     candidates=[activity("park","outdoor")]
@@ -84,7 +87,7 @@ def test_weather_fetch_uses_cache(monkeypatch):
     class Response:
         def raise_for_status(self): pass
         def json(self):
-            return {"daily":{"time":["2026-11-06"],"temperature_2m_max":[12],
+            return {"daily":{"time":[datetime.now(ZoneInfo("America/Edmonton")).date().isoformat()],"temperature_2m_max":[12],
                   "precipitation_probability_max":[20],"wind_speed_10m_max":[10],"weather_code":[2]}}
     class FakeClient:
         def __init__(self,*a,**kw): pass
@@ -99,3 +102,51 @@ def test_weather_fetch_uses_cache(monkeypatch):
     assert a==b
     assert len(requests)==1
     assert requests[0][1]["timezone"]=="America/Edmonton"
+    assert requests[0][1]["start_date"]==requests[0][1]["end_date"]
+
+
+def test_requested_visit_date_is_in_schema_and_rejects_past():
+    today=datetime.now(ZoneInfo("America/Edmonton")).date()
+    r=RecommendationRequest(city="Calgary", children_ages=[2],
+                            visit_date=today+timedelta(days=2))
+    assert r.visit_date == today + timedelta(days=2)
+    with pytest.raises(ValidationError):
+        RecommendationRequest(city="Calgary", children_ages=[2],
+                              visit_date=today-timedelta(days=1))
+    with pytest.raises(ValidationError):
+        RecommendationRequest(city="Calgary", children_ages=[2],
+                              visit_date=today+timedelta(days=16))
+
+
+def test_date_specific_forecast_is_passed_to_provider(monkeypatch):
+    monkeypatch.setenv("WEATHER_PROVIDER","open_meteo")
+    selected=(datetime.now(ZoneInfo("America/Edmonton")).date()+timedelta(days=3))
+    called=[]
+    async def fake_forecast(town, outing_date=None):
+        called.append((town,outing_date))
+        return interpret_daily({"time":[outing_date],"temperature_2m_max":[8],
+             "precipitation_probability_max":[25],"wind_speed_10m_max":[12],
+             "weather_code":[1]}, town, outing_date)
+    monkeypatch.setattr("app.weather.get_town_forecast",fake_forecast)
+    r=RecommendationRequest(city="Calgary",children_ages=[2],visit_date=selected)
+    c=activity("park","outdoor")
+    out,w=asyncio.run(add_weather([c],r))
+    assert called==[("calgary",selected.isoformat())]
+    assert selected.isoformat() in out[0].weather_summary
+    assert w is None
+
+
+def test_forecast_mismatch_rejected():
+    with pytest.raises(ValueError,match="does not match"):
+        interpret_daily({"time":["2026-11-06"],"temperature_2m_max":[9]},
+                         "calgary","2026-11-07")
+
+
+def test_response_does_not_claim_open_on_visit_date():
+    from app.recommend import recommend
+    r=RecommendationRequest(city="Calgary",children_ages=[2],
+        visit_date=datetime.now(ZoneInfo("America/Edmonton")).date()+timedelta(days=2))
+    c=activity("museum","indoor").model_copy(update={"hours_status":"open_now"})
+    result=asyncio.run(recommend([c],r))
+    assert result[0].hours_status=="open_now"
+    assert result[0].hours_for_visit_date=="unknown"
