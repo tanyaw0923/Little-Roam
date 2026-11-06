@@ -64,7 +64,7 @@ Set `HOURS_PROVIDER=google_places` to enable optional **live Google Places API (
 
 ```bash
 export PROJECT_ID="$(gcloud config get-value project)"
-gcloud services enable geocoding-backend.googleapis.com places.googleapis.com --project="$PROJECT_ID"
+gcloud services enable geocoding-backend.googleapis.com places-backend.googleapis.com --project="$PROJECT_ID"
 ```
 
 Google Geocoding API and Places API (New) need **separate API-restricted keys** from the existing Routes API key. Create the keys in [Credentials](https://console.cloud.google.com/apis/credentials), then store them in Secret Manager without copying them into source control:
