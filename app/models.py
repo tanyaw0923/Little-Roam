@@ -1,5 +1,5 @@
 from typing import Literal
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, PrivateAttr, field_validator, model_validator
 
 Province = Literal['AB','BC','ON','QC','MB','SK','NS','NB','NL','PE','YT','NT','NU']
 ActivityType = Literal['any','indoor','outdoor']
@@ -14,8 +14,7 @@ class RecommendationRequest(BaseModel):
     budget: Budget = 'any'
     search_scope: Literal['city', 'regional'] = 'city'
     postal_code: str | None = Field(default=None, max_length=8)
-    origin_latitude: float | None = Field(default=None, ge=-90, le=90, exclude=True)
-    origin_longitude: float | None = Field(default=None, ge=-180, le=180, exclude=True)
+    _resolved_origin: tuple[float,float] | None = PrivateAttr(default=None)
     max_drive_minutes: Literal[30, 60, 120] = 60
     max_results: int = Field(default=10, ge=1, le=10)
 
