@@ -14,7 +14,7 @@ import httpx
 logger=logging.getLogger(__name__)
 MAX_HOURS_REQUESTS=10
 BASE="https://places.googleapis.com/v1/places/"
-FIELD_MASK="id,businessStatus,currentOpeningHours.openNow,currentOpeningHours.weekdayDescriptions"
+FIELD_MASK="id,businessStatus,currentOpeningHours.openNow,currentOpeningHours.weekdayDescriptions,regularOpeningHours.weekdayDescriptions"
 
 async def _fetch_hours(client, place_id: str, api_key: str):
     if not place_id or len(place_id)>250 or not all(x.isalnum() or x in "-_" for x in place_id):
@@ -28,7 +28,7 @@ async def _fetch_hours(client, place_id: str, api_key: str):
     if data.get("id")!=place_id:
         return None
     hours = data.get("currentOpeningHours") or {}
-    descriptions = hours.get("weekdayDescriptions") or []
+    descriptions = hours.get("weekdayDescriptions") or (data.get("regularOpeningHours") or {}).get("weekdayDescriptions") or []
     if not isinstance(descriptions,list) or not all(isinstance(x,str) for x in descriptions):
         descriptions = []
     descriptions = [x[:150] for x in descriptions[:7]]
