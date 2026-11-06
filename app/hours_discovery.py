@@ -297,7 +297,7 @@ def approve(conn, source_id, activity_id, reviewer, days=14):
                 VALUES (%s,%s,%s,'{}'::jsonb,%s,NOW(),%s,%s)
                 ON CONFLICT(source_id,activity_id) DO UPDATE SET
                   weekly_hours=EXCLUDED.weekly_hours,
-                  date_notices=EXCLUDED.date_notices,
+                  date_notices=public.activity_official_hours.date_notices,
                   source_url=EXCLUDED.source_url,
                   verified_at=EXCLUDED.verified_at,
                   valid_until=EXCLUDED.valid_until,
