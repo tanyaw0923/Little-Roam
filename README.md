@@ -117,7 +117,6 @@ gcloud services enable routes.googleapis.com --project="$(gcloud config get-valu
 ```json
 {
   "city": "Calgary",
-  "province": "AB",
   "children_ages": [2, 6],
   "interests": ["animals", "nature"],
   "activity_type": "any",
@@ -170,7 +169,6 @@ Regional requests can now include an **Alberta postal code** (example: `T2P 1J9`
 ```json
 {
   "city": "Calgary",
-  "province": "AB",
   "postal_code": "T2P 1J9",
   "search_scope": "regional",
   "max_drive_minutes": 120,
@@ -240,7 +238,6 @@ The backend supports a **30-, 60-, or 120-minute** regional driving preference f
 ```json
 {
   "city": "Calgary",
-  "province": "AB",
   "search_scope": "regional",
   "max_drive_minutes": 120,
   "children_ages": [2, 6],
