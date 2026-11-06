@@ -11,7 +11,6 @@ Example:
 ```json
 {
   "city": "Calgary",
-  "province": "AB",
   "search_scope": "regional",
   "max_drive_minutes": 120,
   "children_ages": [2, 6],
