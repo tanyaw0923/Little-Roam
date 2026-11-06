@@ -147,7 +147,41 @@ Example for November 8, 2026 (update to a date within 15 days of the day you tes
 
 Returns up to 10 candidates, with names, addresses, optional URLs, scores, reasons, parent tips and warnings. When fewer eligible records exist, it returns fewer than 10 rather than fabricating places.
 
-## Visit-date opening hours\n\nFor each recommendation, Little Roam identifies the weekday of `visit_date` (or today's date in Alberta if omitted), then returns only that day's line in `published_weekly_hours` and `visit_day_hours`. For example, a Friday Banff search may return `\"Friday: 11 a.m. - 5 p.m. (Oct 16 - May 14)\"` rather than the full seven-day schedule. Recognized month/day seasonal ranges are checked, including ranges crossing New Year. Explicit dated notices remain in `hours_date_notice`. The API does not claim confirmed availability: ordinary schedules do not prove that an attraction or session will actually be available. No database migration is required for this filtering change.\n\n## Official website operating hours (new, backend only)
+## Visit-date opening hours\n\nFor each recommendation, Little Roam identifies the weekday of `visit_date` (or today's date in Alberta if omitted), then returns only that day's line in `published_weekly_hours` and `visit_day_hours`. For example, a Friday Banff search may return `\"Friday: 11 a.m. - 5 p.m. (Oct 16 - May 14)\"` rather than the full seven-day schedule. Recognized month/day seasonal ranges are checked, including ranges crossing New Year. Explicit dated notices remain in `hours_date_notice`. The API does not claim confirmed availability: ordinary schedules do not prove that an attraction or session will actually be available. No database migration is required for this filtering change.\n\n## Automatically discover missing indoor venue hours (review required)
+
+An opt-in command-line discovery workflow now checks **independently sourced official facility URLs** for indoor venues that have no fresh approved schedule. It recognizes explicit [schema.org OpeningHoursSpecification](https://schema.org/OpeningHoursSpecification) attached to the exact venue name. This is **not a generic web search or arbitrary-HTML scraping system**: without that structured data, it reports `no_structured_hours` and a person must research and enter hours manually. Do not store Google Places content in the review queue or the official-hours ledger.
+
+**First-time migration:** In Supabase SQL Editor, run [sql/activity_hours_review_queue.sql](sql/activity_hours_review_queue.sql) after [sql/activity_official_hours.sql](sql/activity_official_hours.sql). This creates a review queue but changes neither approved records nor existing FastAPI results.
+
+In Cloud Shell, load the existing `DATABASE_URL` secret (see the full FastAPI startup workflow above), then:
+
+```bash
+cd ~/Little-Roam/Little-Roam
+git pull --ff-only origin main
+python -m pytest tests/test_hours_discovery.py tests/test_place_details.py -q
+
+# 1. Read-only dry run (up to 15 indoor venues with missing/stale hours).
+python -m app.hours_discovery discover --limit 15
+
+# 2. Store discoveries in the review queue (NOT in public recommendations).
+python -m app.hours_discovery discover --limit 15 --apply
+
+# 3. Inspect proposed schedules, source links, and failures.
+python -m app.hours_discovery pending
+
+# 4. ONLY after manually visiting the actual official page, reviewing its
+# venue identity, weekly schedule, holiday/seasonal exceptions, and dates:
+python -m app.hours_discovery approve SOURCE_ID ACTIVITY_ID \
+  --reviewer "your-reviewer-label" --confirm
+```
+
+The command fetches **one URL per attraction**, without following redirects or crawling search results, and limits the batch to 30 attractions and each HTML page to 800 KB. The default approved official host families are `calgary.ca`, `canmore.ca`, `banff.ca`, and `parks.canada.ca`; add another **trusted operator-reviewed host** with `OFFICIAL_HOURS_ALLOWED_HOSTS` (comma-separated; setting it **replaces** the default list). Review the URL and site usage/robots restrictions before enabling an unfamiliar host. The job is not automatically scheduled and does not alter your existing Calgary daily importer.
+
+Only `pending_review` records containing exact-name structured schedules can be promoted. Approval requires a reviewer label, `--confirm`, and a discovery no older than seven days. Approved records go into the existing `activity_official_hours` table with `verified_at=NOW()` and 14-day validity. Any future/holiday closures must be independently reviewed and entered into the existing `date_notices` field; **approval does not infer exceptions**. If the source only provides an unstructured table, manually check it and enter the corresponding schedule into `activity_official_hours` with source URL and expiry.
+
+During recommendation requests, approved official schedules are checked first. If the selected weekday lacks approved hours, `HOURS_PROVIDER=google_places` can optionally fetch live published hours for a verified Google Place ID. Google is not queried for the hours of an attraction with an applicable approved schedule, reducing billable requests. If the Places key is absent, existing recommendations continue with unknown hours. The `hours_verified` response flag means a sourced **visit-weekday** schedule was found, not that a specific session or holiday opening is guaranteed.
+
+## Official website operating hours (new, backend only)
 
 Little Roam now supports **either live Google Places hours or independently verified hours from an operator-reviewed official website**. The latter is stored in a **separate** Supabase ledger, not mixed with Google's licensed data and not overwritten by the Calgary importer.
 
