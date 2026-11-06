@@ -1,6 +1,7 @@
 import json
 import os
 from .models import Candidate, Recommendation, RecommendationRequest
+from .visit_hours import chosen_visit_date, hours_for_weekday
 
 
 def score_candidate(c:Candidate, r:RecommendationRequest)->float:
@@ -50,8 +51,10 @@ async def recommend(candidates:list[Candidate],r:RecommendationRequest)->list[Re
     eligible_candidates=[c for c in candidates if eligible(c,r)]
     ordered=sorted(eligible_candidates,key=lambda c:(-score_candidate(c,r),c.distance_km if c.distance_km is not None else float('inf'),c.place_id))[:r.max_results]
     narratives=await explain(ordered,r)
+    visit_date=chosen_visit_date(r.visit_date)
     out=[]
     for c in ordered:
+        selected_hours=hours_for_weekday(c.published_weekly_hours, visit_date)
         reason,tip=narratives.get(c.place_id,(
             'Potential match based on your activity preferences; check the official listing for age suitability.',
             'Confirm operating hours, admission fees, and child facilities before visiting.'))
@@ -61,13 +64,14 @@ async def recommend(candidates:list[Candidate],r:RecommendationRequest)->list[Re
             activity_type=c.activity_type,distance_km=c.distance_km,drive_minutes=c.drive_minutes,
             weather_summary=c.weather_summary,weather_source=c.weather_source,
             hours_status=c.hours_status,hours_source_url=c.hours_source_url,
-            hours_checked_at=c.hours_checked_at,published_weekly_hours=c.published_weekly_hours,
+            hours_checked_at=c.hours_checked_at,published_weekly_hours=selected_hours,
+            visit_day_hours=selected_hours[0] if selected_hours else None,
             hours_source=c.hours_source,hours_status_source=c.hours_status_source,
             hours_status_checked_at=c.hours_status_checked_at,
             hours_date_notice=c.hours_date_notice,
             hours_for_visit_date='unknown',
             hours_verified=(c.hours_status != 'unknown'),
-            hours_schedule_verified=(c.hours_source != 'unknown' and bool(c.published_weekly_hours)),
+            hours_schedule_verified=(c.hours_source != 'unknown' and bool(selected_hours)),
             reason=reason,parent_tip=tip,
             source=c.source,score=score_candidate(c,r)))
     return out
