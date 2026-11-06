@@ -114,6 +114,8 @@ gcloud services enable routes.googleapis.com --project="$(gcloud config get-valu
 
 `POST /api/v1/recommendations`
 
+**No province input is required.** The current Alberta-only MVP automatically uses `AB` internally for Calgary, Canmore, Banff, and Alberta postal codes. The response still includes the resolved province for clarity. When Little Roam expands across Canada, we can infer province from validated postal-code or geocoded location data instead of asking parents to select it.
+
 ```json
 {
   "city": "Calgary",
