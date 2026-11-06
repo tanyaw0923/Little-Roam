@@ -34,7 +34,7 @@ async def recommendations(payload:RecommendationRequest):
     selected,matching_warning=await match_missing_place_ids(selected)
     # Approved official schedules are first-party evidence; Google is the fallback.
     selected,official_hours_warning=await enrich_official_hours(selected, payload.visit_date)
-    selected,details_warning=await enrich_place_details(selected)
+    selected,details_warning=await enrich_place_details(selected, payload.visit_date)
     results=await recommend(selected,payload)
     warnings=['Demo data only; no listed attractions are real.' if mode=='mock' else
               'Activity details require independent verification from permitted sources; confirm hours, prices and age suitability.',
