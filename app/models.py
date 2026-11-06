@@ -39,6 +39,9 @@ class Candidate(BaseModel):
     longitude: float | None = None
     distance_km: float | None = None
     drive_minutes: float | None = None
+    weather_summary: str | None = None
+    weather_source: str | None = None
+    weather_score_adjustment: float = Field(default=0.0, exclude=True)
     google_maps_url: str | None = None
     website_url: str | None = None
     activity_type: ActivityType = 'any'
@@ -57,6 +60,8 @@ class Recommendation(BaseModel):
     activity_type: ActivityType
     distance_km: float | None = None
     drive_minutes: float | None = None
+    weather_summary: str | None = None
+    weather_source: str | None = None
     admission_price_cad: float | None = None
     hours_verified: bool = False
     reason: str
