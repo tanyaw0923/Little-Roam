@@ -149,7 +149,7 @@ def test_response_does_not_claim_open_on_visit_date():
     c=activity("museum","indoor").model_copy(update={"hours_status":"open_now"})
     result=asyncio.run(recommend([c],r))
     assert result[0].hours_status=="open_now"
-    assert result[0].hours_for_visit_date=="unknown"
+    assert "hours_for_visit_date" not in result[0].model_dump()
 
 
 def test_regional_weather_uses_destination_town(monkeypatch):
