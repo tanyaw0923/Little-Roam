@@ -129,3 +129,29 @@ def test_hours_cap_is_ten(monkeypatch):
     many=[Candidate(place_id=str(i),name=str(i),address="AB",google_place_id=f"ChIJ{i}",source="curated") for i in range(25)]
     out,w=asyncio.run(verify_hours(many))
     assert len(n)==10
+
+
+def test_driving_matrix_starts_at_postal_origin(monkeypatch):
+    from app.driving import routes_for_candidates
+    monkeypatch.setenv("GOOGLE_ROUTES_API_KEY","fake")
+    class Response:
+        def raise_for_status(self): pass
+        def json(self):
+            return [{"originIndex":0,"destinationIndex":0,"condition":"ROUTE_EXISTS",
+                     "duration":"600s","distanceMeters":8000}]
+    class Client:
+        def __init__(self,**kwargs): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self,*args): pass
+        async def post(self,url,headers,json):
+            origin=json["origins"][0]["waypoint"]["location"]["latLng"]
+            assert origin=={"latitude":51.14,"longitude":-114.18}
+            return Response()
+    monkeypatch.setattr("app.driving.httpx.AsyncClient",Client)
+    request_with_postal=request(search_scope="regional",postal_code="T2P 1J9").model_copy(
+        update={"origin_latitude":51.14,"origin_longitude":-114.18})
+    c=Candidate(place_id="x",name="x",address="AB",
+                latitude=51.2,longitude=-114.2,source="curated")
+    results=asyncio.run(routes_for_candidates([c],request_with_postal))
+    assert len(results)==1
+    assert results[0].drive_minutes==10
