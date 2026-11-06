@@ -84,6 +84,8 @@ class Recommendation(BaseModel):
     address: str
     google_maps_url: str | None
     website_url: str | None
+    website_source: Literal['curated','google_places','unknown'] = 'unknown'
+    official_source_url: str | None = None
     activity_type: ActivityType
     distance_km: float | None = None
     drive_minutes: float | None = None
