@@ -11,7 +11,7 @@ import re
 import httpx
 from fastapi import HTTPException
 
-from .geo import origin_for, straight_line_km
+from .geo import request_origin, straight_line_km
 from .models import Candidate, RecommendationRequest
 
 ROUTE_MATRIX_URL = "https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix"
@@ -31,7 +31,7 @@ def _duration_minutes(value: str) -> float | None:
 def shortlist(candidates: list[Candidate], request: RecommendationRequest) -> list[Candidate]:
     """Cheap relevance/coordinate preselection before any paid routing call."""
     from .recommend import eligible, score_candidate
-    origin = origin_for(request.province, request.city)
+    origin = request_origin(request)
     if origin is None:
         return []
     found = []
