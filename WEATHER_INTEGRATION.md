@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Add **optional, same-day forecast context** to the activity ranking. This is not a real-time safety service and does not determine whether a venue is open, accessible, age-appropriate, or safe.
+Add **optional, date-specific daily forecast context** to the activity ranking. This is not a real-time safety service and does not determine whether a venue is open, accessible, age-appropriate, or safe.
 
 The initial provider is **Open-Meteo Forecast API**: https://open-meteo.com/en/docs
 
@@ -13,12 +13,13 @@ Environment and Climate Change Canada also offers public weather services via MS
 ## What is implemented
 
 - Opt-in `WEATHER_PROVIDER=open_meteo` (default: `off`).
-- Daily forecast for **today**, with local `America/Edmonton` time zone.
+- Daily forecast for **the requested visit date** (today if omitted), with local `America/Edmonton` time zone.
 - Uses maximum temperature, maximum precipitation probability, maximum wind speed, and WMO weather code.
 - Currently supports municipal-centre forecast points for **Calgary, Canmore, Banff**. Each regional activity uses the nearest of those towns by coordinates. Forecasts are **town-level, not precise attraction/mountain trail forecasts**.
+- Requests accept an optional `visit_date` (ISO `YYYY-MM-DD`), validated from today through 15 days ahead. Forecasts beyond that window are not estimated or fabricated.
 - On a cold, very hot, windy, or precipitation-heavy daily forecast, the algorithm gives indoor venues a small score boost and outdoor venues a small penalty. On other days it slightly favors outdoor activities. Never removes activities purely due to forecast.
 - Returns optional `weather_summary` and `weather_source` fields for each recommendation. If weather data is missing, both stay null.
-- Up to one forecast request per relevant town, cached in-process for 15 minutes. No database migration or extra Cloud Scheduler job required.
+- Up to one forecast request per relevant town and visit date, cached in-process for 15 minutes. No database migration or extra Cloud Scheduler job required.
 - Weather errors fail open: rankings revert to non-weather factors for affected destinations.
 - The Cloud Run Calgary daily activity importer is unchanged.
 
@@ -45,6 +46,7 @@ Use the existing Swagger `POST /api/v1/recommendations` endpoint. Example city-o
 ```json
 {
   "city": "Calgary",
+  "visit_date": "2026-11-08",
   "province": "AB",
   "children_ages": [2, 6],
   "interests": ["nature", "swimming"],
@@ -55,6 +57,8 @@ Use the existing Swagger `POST /api/v1/recommendations` endpoint. Example city-o
 ```
 
 For regional mode also set `"search_scope":"regional","max_drive_minutes":120`, and configure `GOOGLE_ROUTES_API_KEY`; driving requests remain capped at ten routing destinations. Weather API calls do **not** incur Google Routes charges, but the regional routing calls can.
+
+The date in the sample must be today or a future date within the supported 16-day forecast window; update it when running the example. Venue opening hours reported by Google Places are separate from the outing-date forecast and are **not confirmation that a venue or specific program will be open on that day**.
 
 Disable with `export WEATHER_PROVIDER=off`.
 
