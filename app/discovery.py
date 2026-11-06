@@ -51,7 +51,7 @@ async def google_candidates(request: RecommendationRequest) -> list[Candidate]:
                 results[pid]=Candidate(place_id=pid,name=(p.get('displayName') or {}).get('text','Unnamed place'),
                     address=p.get('formattedAddress',''), latitude=location.get('latitude'),
                     longitude=location.get('longitude'),google_maps_url=p.get('googleMapsUri'),
-                    website_url=p.get('websiteUri'), activity_type=a_type,
+                    website_url=p.get('websiteUri'), google_place_id=pid, activity_type=a_type,
                     categories=types+[term],source='google_places')
     return list(results.values())
 
