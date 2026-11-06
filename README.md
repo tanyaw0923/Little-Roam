@@ -147,7 +147,7 @@ Example for November 8, 2026 (update to a date within 15 days of the day you tes
 
 Returns up to 10 candidates, with names, addresses, optional URLs, scores, reasons, parent tips and warnings. When fewer eligible records exist, it returns fewer than 10 rather than fabricating places.
 
-## Official website operating hours (new, backend only)
+## Visit-date opening hours\n\nFor each recommendation, Little Roam identifies the weekday of `visit_date` (or today's date in Alberta if omitted), then returns only that day's line in `published_weekly_hours` and `visit_day_hours`. For example, a Friday Banff search may return `\"Friday: 11 a.m. - 5 p.m. (Oct 16 - May 14)\"` rather than the full seven-day schedule. Recognized month/day seasonal ranges are checked, including ranges crossing New Year. Explicit dated notices remain in `hours_date_notice`. `hours_for_visit_date` remains `unknown`: ordinary schedules do not prove that an attraction or session will actually be available. No database migration is required for this filtering change.\n\n## Official website operating hours (new, backend only)
 
 Little Roam now supports **either live Google Places hours or independently verified hours from an operator-reviewed official website**. The latter is stored in a **separate** Supabase ledger, not mixed with Google's licensed data and not overwritten by the Calgary importer.
 
@@ -170,11 +170,12 @@ export PLACE_MATCH_PROVIDER=off
 
 The existing `DATABASE_URL` is sufficient; no Google key is required for sourced official-site schedules. You can enable `HOURS_PROVIDER=google_places` as well once your Places key is configured. In that case **fresh official-site weekly descriptions take precedence** when present, while `hours_status` remains the separately attributed Google *open-now* reading. Returned fields include:
 
-- `published_weekly_hours`: source-reported weekly hours, not a confirmed swimming/skating session.
+- `visit_day_hours`: the single published opening-hours line matching the `visit_date` weekday, or `null` when unavailable/outside a recognized seasonal window.
+- `published_weekly_hours`: now returns **only the matching visit-day line** (zero or one element) instead of all seven weekdays. Matching is by weekday label, not array position.
 - `hours_source`: `official_website`, `google_places`, or `unknown`.
 - `hours_source_url`: direct official venue schedule page (or Google Maps link when Google is the source).
 - `hours_checked_at`: when the listed schedule was inspected.
-- `hours_schedule_verified`: true when a non-stale weekly schedule exists.
+- `hours_schedule_verified`: true when a non-stale schedule exists for the **selected weekday**; it does not mean actual opening or program availability has been confirmed.
 - `hours_status`, `hours_status_source`, `hours_status_checked_at`: live venue open/closed status, only when Google supplies it.
 - `hours_date_notice`: explicitly documented notice for the selected date, if available.
 - `hours_for_visit_date`: still `unknown`. Even published weekly hours and a dated notice do not confirm a specific activity will take place at the selected time.
