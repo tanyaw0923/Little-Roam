@@ -56,15 +56,11 @@ def test_old_verification_is_stale():
 
 def test_explicit_date_notice_is_not_claim_of_activity_availability():
     c = place()
-    row = record(valid_until=date(2026, 11, 18))
-    # Use explicit logical date to test validity independent of current day.
-    now=datetime.now(timezone.utc)
-    row["verified_at"]=now
-    # This is only valid when test runs before expiry.
-    if now.date() > date(2026,11,18):
-        return
+    selected=datetime.now(timezone.utc).date()+timedelta(days=2)
+    row = record(valid_until=selected+timedelta(days=3))
+    row["date_notices"]={selected.isoformat(): "Official notice: closed on this date"}
     result=apply_official_hours([c], {("town_banff_curated", "fenlands"): row},
-                                visit_date=date(2026,11,11))[0]
+                                visit_date=selected)[0]
     assert "closed" in result.hours_date_notice
     assert result.hours_for_visit_date == "unknown"
 
