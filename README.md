@@ -147,6 +147,40 @@ Example for November 8, 2026 (update to a date within 15 days of the day you tes
 
 Returns up to 10 candidates, with names, addresses, optional URLs, scores, reasons, parent tips and warnings. When fewer eligible records exist, it returns fewer than 10 rather than fabricating places.
 
+## Official website operating hours (new, backend only)
+
+Little Roam now supports **either live Google Places hours or independently verified hours from an operator-reviewed official website**. The latter is stored in a **separate** Supabase ledger, not mixed with Google's licensed data and not overwritten by the Calgary importer.
+
+Set up the official-site path in the **Supabase SQL Editor**, in order:
+
+1. Apply [sql/activity_official_hours.sql](sql/activity_official_hours.sql) to create the optional ledger table.
+2. Ensure [sql/seed_bow_valley.sql](sql/seed_bow_valley.sql) has already inserted Bow Valley venues.
+3. Apply [sql/seed_verified_official_hours.sql](sql/seed_verified_official_hours.sql) to load **two checked examples**: the Town of Banff's Fenlands public building hours, and Parks Canada's Cave and Basin winter hours. The source was inspected **2026-11-06**, with records expiring **2026-11-20**. After expiry the API rejects this outdated evidence until someone rechecks and updates it. These records do **not** promise public skating, museum programming, or holiday access.
+
+In the running **FastAPI Cloud Shell environment**:
+
+```bash
+export PLACES_PROVIDER=postgres
+export OFFICIAL_HOURS_PROVIDER=postgres
+# OPTIONAL: leave Places off until its restricted API key exists
+export HOURS_PROVIDER=off
+export WEBSITE_PROVIDER=off
+export PLACE_MATCH_PROVIDER=off
+```
+
+The existing `DATABASE_URL` is sufficient; no Google key is required for sourced official-site schedules. You can enable `HOURS_PROVIDER=google_places` as well once your Places key is configured. In that case **fresh official-site weekly descriptions take precedence** when present, while `hours_status` remains the separately attributed Google *open-now* reading. Returned fields include:
+
+- `published_weekly_hours`: source-reported weekly hours, not a confirmed swimming/skating session.
+- `hours_source`: `official_website`, `google_places`, or `unknown`.
+- `hours_source_url`: direct official venue schedule page (or Google Maps link when Google is the source).
+- `hours_checked_at`: when the listed schedule was inspected.
+- `hours_schedule_verified`: true when a non-stale weekly schedule exists.
+- `hours_status`, `hours_status_source`, `hours_status_checked_at`: live venue open/closed status, only when Google supplies it.
+- `hours_date_notice`: explicitly documented notice for the selected date, if available.
+- `hours_for_visit_date`: still `unknown`. Even published weekly hours and a dated notice do not confirm a specific activity will take place at the selected time.
+
+**Important:** Official page scraping is **not enabled**. Today's solution uses reviewed records or Google Places live responses; arbitrary websites can have misleading or JavaScript-rendered schedules. To add other venues, review the official source, enter real hours with source URL, verification time, expiry date, and any dated exceptions into `activity_official_hours`. The API drops expired or old (over 30 days) verified schedules automatically. Refer to the migration and example seed for the supported format.
+
 ## Venue websites and opening hours (backend only)
 
 Little Roam can optionally use **Google Places API (New)** to show official venue websites and business opening hours in the existing FastAPI recommendation JSON. It does not require a frontend or new Supabase data columns.
