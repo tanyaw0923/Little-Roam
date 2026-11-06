@@ -1,6 +1,6 @@
 """Optional, failure-tolerant weather context for Little Roam recommendations.
 
-MVP: today's daily forecast for the nearest supported Bow Valley town.
+MVP: chosen outing-date daily forecast for the nearest supported Bow Valley town.
 Open-Meteo's public endpoint is for non-commercial evaluation; commercial
 deployment requires an appropriate provider licence/plan.
 """
@@ -10,6 +10,9 @@ import os
 import time
 
 import httpx
+
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from .geo import CENTRES, straight_line_km
 
@@ -28,7 +31,7 @@ def weather_town(candidate, request):
         return nearest_town(candidate.latitude, candidate.longitude)
     return request.city.strip().lower()
 
-def interpret_daily(daily: dict, town: str):
+def interpret_daily(daily: dict, town: str, expected_date: str | None = None):
     """Conservative indoor/outdoor preference—not a safety determination."""
     def first(field):
         values = daily.get(field)
@@ -41,6 +44,8 @@ def interpret_daily(daily: dict, town: str):
     day = first("time")
     if day is None or all(v is None for v in (temp, precip, wind, code)):
         raise ValueError("Incomplete daily forecast")
+    if expected_date is not None and day != expected_date:
+        raise ValueError('Forecast date does not match outing date')
     if not isinstance(day, str):
         raise ValueError("Unexpected forecast date")
     risk = ((isinstance(precip, (int, float)) and precip >= 65)
@@ -57,8 +62,9 @@ def interpret_daily(daily: dict, town: str):
     return {"date": day, "town": town.title(), "summary": f"{town.title()} forecast for {day}: " + ", ".join(parts),
             "indoor_favoured": bool(risk), "source": "Open-Meteo"}
 
-async def get_town_forecast(town: str):
-    key = ("AB", town)
+async def get_town_forecast(town: str, outing_date: str | None = None):
+    outing_date = outing_date or datetime.now(ZoneInfo('America/Edmonton')).date().isoformat()
+    key = ("AB", town, outing_date)
     cached = _CACHE.get(key)
     if cached and cached[0] > time.monotonic():
         return cached[1]
@@ -67,11 +73,11 @@ async def get_town_forecast(town: str):
         return None
     params = {"latitude": latlon[0], "longitude": latlon[1],
               "daily": "weather_code,temperature_2m_max,precipitation_probability_max,wind_speed_10m_max",
-              "timezone": "America/Edmonton", "forecast_days": 1}
+              "timezone": "America/Edmonton", "start_date": outing_date, "end_date": outing_date}
     async with httpx.AsyncClient(timeout=6) as client:
         response = await client.get(OPEN_METEO_URL, params=params)
         response.raise_for_status()
-        forecast = interpret_daily(response.json()["daily"], town)
+        forecast = interpret_daily(response.json()["daily"], town, outing_date)
     _CACHE[key] = (time.monotonic() + CACHE_SECONDS, forecast)
     return forecast
 
@@ -85,9 +91,10 @@ async def add_weather(candidates, request):
     if not candidates:
         return candidates, None
     towns = {weather_town(c, request) for c in candidates}
+    outing_date = (request.visit_date or datetime.now(ZoneInfo('America/Edmonton')).date()).isoformat()
     async def safe_fetch(town):
         try:
-            return town, await get_town_forecast(town)
+            return town, await get_town_forecast(town, outing_date)
         except (httpx.HTTPError, KeyError, TypeError, ValueError) as exc:
             logger.warning("Weather forecast unavailable for %s: %s", town, type(exc).__name__)
             return town, None
