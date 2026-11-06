@@ -75,6 +75,7 @@ async def enrich_place_details(candidates):
     want_hours = os.getenv("HOURS_PROVIDER", "off").lower() == "google_places"
     result = [c.model_copy(update={
         "google_maps_url": c.google_maps_url or maps_search_url(c),
+        "website_url": valid_website_url(c.website_url),
         "website_source": ("google_places" if c.source == "google_places" else "curated")
                           if valid_website_url(c.website_url) else "unknown",
     }) for c in candidates]
