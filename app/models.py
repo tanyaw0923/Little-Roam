@@ -13,12 +13,22 @@ class RecommendationRequest(BaseModel):
     activity_type: ActivityType = 'any'
     budget: Budget = 'any'
     search_scope: Literal['city', 'regional'] = 'city'
+    postal_code: str | None = Field(default=None, max_length=8)
+    origin_latitude: float | None = Field(default=None, ge=-90, le=90, exclude=True)
+    origin_longitude: float | None = Field(default=None, ge=-180, le=180, exclude=True)
     max_drive_minutes: Literal[30, 60, 120] = 60
     max_results: int = Field(default=10, ge=1, le=10)
 
     @model_validator(mode='after')
     def ensure_regional_origin(self):
-        if self.search_scope == 'regional':
+        if self.postal_code is not None:
+            from .postal import normalize_postal_code
+            self.postal_code = normalize_postal_code(self.postal_code)
+            if self.search_scope != 'regional':
+                raise ValueError('postal_code requires search_scope=regional')
+            if self.province != 'AB' or not self.postal_code.startswith('T'):
+                raise ValueError('Postal-code regional search currently supports Alberta postal codes')
+        if self.search_scope == 'regional' and self.postal_code is None:
             from .geo import origin_for
             if origin_for(self.province, self.city) is None:
                 raise ValueError('Regional search currently supports Calgary, Canmore, and Banff, AB as origins')
@@ -41,6 +51,9 @@ class Candidate(BaseModel):
     drive_minutes: float | None = None
     weather_summary: str | None = None
     weather_source: str | None = None
+    hours_status: Literal['open_now','closed_now','unknown'] = 'unknown'
+    hours_source_url: str | None = None
+    hours_checked_at: str | None = None
     weather_score_adjustment: float = Field(default=0.0, exclude=True)
     google_maps_url: str | None = None
     website_url: str | None = None
@@ -49,6 +62,7 @@ class Candidate(BaseModel):
     price_category: Budget = 'any'
     min_age: int | None = None
     max_age: int | None = None
+    google_place_id: str | None = None
     source: Literal['mock','google_places','curated']
 
 class Recommendation(BaseModel):
@@ -62,6 +76,9 @@ class Recommendation(BaseModel):
     drive_minutes: float | None = None
     weather_summary: str | None = None
     weather_source: str | None = None
+    hours_status: Literal['open_now','closed_now','unknown'] = 'unknown'
+    hours_source_url: str | None = None
+    hours_checked_at: str | None = None
     admission_price_cad: float | None = None
     hours_verified: bool = False
     reason: str
