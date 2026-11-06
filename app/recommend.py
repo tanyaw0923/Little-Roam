@@ -69,7 +69,6 @@ async def recommend(candidates:list[Candidate],r:RecommendationRequest)->list[Re
             hours_source=c.hours_source,hours_status_source=c.hours_status_source,
             hours_status_checked_at=c.hours_status_checked_at,
             hours_date_notice=c.hours_date_notice,
-            hours_for_visit_date='unknown',
             hours_verified=(c.hours_status != 'unknown'),
             hours_schedule_verified=(c.hours_source != 'unknown' and bool(selected_hours)),
             reason=reason,parent_tip=tip,
