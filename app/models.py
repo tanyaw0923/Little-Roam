@@ -105,7 +105,6 @@ class Recommendation(BaseModel):
     visit_day_hours: str | None = None
     admission_price_cad: float | None = None
     hours_verified: bool = False
-    hours_schedule_verified: bool = False
     reason: str
     parent_tip: str
     source: str
