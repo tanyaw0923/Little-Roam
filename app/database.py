@@ -3,7 +3,7 @@ import os
 import asyncio
 from fastapi import HTTPException
 from .models import Candidate, RecommendationRequest
-from .geo import bounding_box, origin_for
+from .geo import bounding_box, request_origin
 
 DDL = """
 CREATE TABLE IF NOT EXISTS activities (
@@ -47,7 +47,7 @@ def _fetch(r: RecommendationRequest):
         with conn.cursor() as cur:
             if r.search_scope == 'regional':
                 # Do not invent locations for records that have no coordinates.
-                origin = origin_for(r.province, r.city)
+                origin = request_origin(r)
                 if origin is None:
                     raise ValueError('Unsupported regional search origin')
                 min_lat, max_lat, min_lon, max_lon = bounding_box(*origin, 250)
