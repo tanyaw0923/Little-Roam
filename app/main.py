@@ -10,6 +10,7 @@ from .driving import filter_by_driving_time
 from .weather import add_weather
 from .postal import resolve_postal_origin
 from .place_details import enrich_place_details
+from .official_hours import enrich_official_hours
 from .place_matching import match_missing_place_ids
 from .recommend import eligible, score_candidate
 
@@ -32,6 +33,7 @@ async def recommendations(payload:RecommendationRequest):
     selected = sorted(eligible_candidates, key=lambda c: (-score_candidate(c,payload), c.distance_km if c.distance_km is not None else float('inf'), c.place_id))[:payload.max_results]
     selected,matching_warning=await match_missing_place_ids(selected)
     selected,details_warning=await enrich_place_details(selected)
+    selected,official_hours_warning=await enrich_official_hours(selected, payload.visit_date)
     results=await recommend(selected,payload)
     warnings=['Demo data only; no listed attractions are real.' if mode=='mock' else
               'Activity details require independent verification from permitted sources; confirm hours, prices and age suitability.',
@@ -43,6 +45,8 @@ async def recommendations(payload:RecommendationRequest):
         warnings.append(matching_warning)
     if details_warning:
         warnings.append(details_warning)
+    if official_hours_warning:
+        warnings.append(official_hours_warning)
     if weather_warning:
         warnings.append(weather_warning)
     if len(results)<payload.max_results:
