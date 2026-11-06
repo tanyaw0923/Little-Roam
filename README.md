@@ -126,7 +126,7 @@ Example for November 8, 2026 (update to a date within 15 days of the day you tes
 }
 ```
 
-**Hours are not yet confirmed for the selected visit date.** The API distinguishes the venue's reported **open-now** status and published weekly opening hours from `hours_for_visit_date: "unknown"`. Swimming, skating, holiday opening and other session schedules require separate date-specific evidence; never infer them from weekly hours. Optional live Places lookups incur charges and require verified Place ID mappings. The City of Calgary daily importer is unchanged.
+**Hours are not yet confirmed for the selected visit date.** The API distinguishes the venue's reported **open-now** status and published weekly opening hours from the fact that schedules do not guarantee visit-date availability. Swimming, skating, holiday opening and other session schedules require separate date-specific evidence; never infer them from weekly hours. Optional live Places lookups incur charges and require verified Place ID mappings. The City of Calgary daily importer is unchanged.
 
 ### Recommend family activities
 
@@ -147,7 +147,7 @@ Example for November 8, 2026 (update to a date within 15 days of the day you tes
 
 Returns up to 10 candidates, with names, addresses, optional URLs, scores, reasons, parent tips and warnings. When fewer eligible records exist, it returns fewer than 10 rather than fabricating places.
 
-## Visit-date opening hours\n\nFor each recommendation, Little Roam identifies the weekday of `visit_date` (or today's date in Alberta if omitted), then returns only that day's line in `published_weekly_hours` and `visit_day_hours`. For example, a Friday Banff search may return `\"Friday: 11 a.m. - 5 p.m. (Oct 16 - May 14)\"` rather than the full seven-day schedule. Recognized month/day seasonal ranges are checked, including ranges crossing New Year. Explicit dated notices remain in `hours_date_notice`. `hours_for_visit_date` remains `unknown`: ordinary schedules do not prove that an attraction or session will actually be available. No database migration is required for this filtering change.\n\n## Official website operating hours (new, backend only)
+## Visit-date opening hours\n\nFor each recommendation, Little Roam identifies the weekday of `visit_date` (or today's date in Alberta if omitted), then returns only that day's line in `published_weekly_hours` and `visit_day_hours`. For example, a Friday Banff search may return `\"Friday: 11 a.m. - 5 p.m. (Oct 16 - May 14)\"` rather than the full seven-day schedule. Recognized month/day seasonal ranges are checked, including ranges crossing New Year. Explicit dated notices remain in `hours_date_notice`. The API does not claim confirmed availability: ordinary schedules do not prove that an attraction or session will actually be available. No database migration is required for this filtering change.\n\n## Official website operating hours (new, backend only)
 
 Little Roam now supports **either live Google Places hours or independently verified hours from an operator-reviewed official website**. The latter is stored in a **separate** Supabase ledger, not mixed with Google's licensed data and not overwritten by the Calgary importer.
 
@@ -178,7 +178,7 @@ The existing `DATABASE_URL` is sufficient; no Google key is required for sourced
 - `hours_schedule_verified`: true when a non-stale schedule exists for the **selected weekday**; it does not mean actual opening or program availability has been confirmed.
 - `hours_status`, `hours_status_source`, `hours_status_checked_at`: live venue open/closed status, only when Google supplies it.
 - `hours_date_notice`: explicitly documented notice for the selected date, if available.
-- `hours_for_visit_date`: still `unknown`. Even published weekly hours and a dated notice do not confirm a specific activity will take place at the selected time.
+- Published weekly hours and a dated notice do not confirm a specific activity will take place at the selected time.
 
 **Important:** Official page scraping is **not enabled**. Today's solution uses reviewed records or Google Places live responses; arbitrary websites can have misleading or JavaScript-rendered schedules. To add other venues, review the official source, enter real hours with source URL, verification time, expiry date, and any dated exceptions into `activity_official_hours`. The API drops expired or old (over 30 days) verified schedules automatically. Refer to the migration and example seed for the supported format.
 
@@ -189,7 +189,7 @@ Little Roam can optionally use **Google Places API (New)** to show official venu
 - **First:** return the independently sourced `website_url` in Supabase if present; never overwrite it.
 - **For other venues:** when a Google Place ID is mapped, fetch `websiteUri` live from Place Details. `website_source` indicates `curated`, `google_places` or `unknown`. Google Maps search links are always available as a **separate** `google_maps_url` fallback, **not** a made-up official website.
 - **When no mapped Place ID exists:** optional exact-name-and-nearby-coordinate Text Search finds a likely Google Place ID **only** if the name matches exactly after punctuation normalization AND coordinates are within 350 m. Ambiguous matches are discarded. The IDs are used per request, not automatically saved to Supabase.
-- **Business hours:** current `hours_status` (`open_now`, `closed_now`, `permanently_closed` or `unknown`), `published_weekly_hours`, `hours_checked_at` and `hours_source_url` are returned from Google when available. `hours_for_visit_date` remains `unknown` because business opening hours cannot confirm a specific future swimming, skating or museum program.
+- **Business hours:** current `hours_status` (`open_now`, `closed_now`, `permanently_closed` or `unknown`), `published_weekly_hours`, `hours_checked_at` and `hours_source_url` are returned from Google when available. Future-date availability is not asserted because business opening hours cannot confirm a specific future swimming, skating or museum program.
 - **Cost controls:** up to five billable Text Search matching requests and ten combined Place Details requests per recommendation request. Website and hours are requested in **one** Place Details call per matched attraction; enable billing alerts and API quotas.
 - **Google policies:** display Google Maps attribution for Places-derived data. Google Places content cannot be stored or scraped into the Supabase activity table; this integration only fetches it during the request. The Google Place ID is exempt from standard caching restrictions. Review Google Maps Platform service terms before launching.
 
