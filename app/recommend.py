@@ -58,6 +58,9 @@ async def recommend(candidates:list[Candidate],r:RecommendationRequest)->list[Re
         out.append(Recommendation(place_id=c.place_id,name=c.name,address=c.address,
             google_maps_url=c.google_maps_url,website_url=c.website_url,
             activity_type=c.activity_type,distance_km=c.distance_km,drive_minutes=c.drive_minutes,
-            weather_summary=c.weather_summary,weather_source=c.weather_source,reason=reason,parent_tip=tip,
+            weather_summary=c.weather_summary,weather_source=c.weather_source,
+            hours_status=c.hours_status,hours_source_url=c.hours_source_url,
+            hours_checked_at=c.hours_checked_at,hours_verified=(c.hours_status != 'unknown'),
+            reason=reason,parent_tip=tip,
             source=c.source,score=score_candidate(c,r)))
     return out
