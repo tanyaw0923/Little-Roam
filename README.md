@@ -12,7 +12,8 @@ Little Roam is an early-stage Python/FastAPI backend that recommends family outi
 - ✅ Generic PostgreSQL JSON-feed refresh and unit tests in repository
 - ✅ Calgary-specific importer is committed in `app/calgary_import.py`
 - ✅ Calgary Cloud Run daily importer deployed and Scheduler trigger configured (as reported in deployment setup)
-- ⏳ Weather integration and public website not yet deployed
+- ✅ Optional weather-aware ranking implemented in GitHub (not yet live-tested or deployed)
+- ⏳ Public website not yet deployed
 
 > The API is a working MVP, not a fully verified production activity recommender. Opening hours, prices and age suitability are not yet comprehensively verified. Regional routing is optional and only supports Calgary, Canmore and Banff origins.
 
@@ -27,6 +28,7 @@ FastAPI /api/v1/recommendations
        +-- PostgreSQL (Supabase): curated/licensed Canadian activities
        +-- Python ranking and optional OpenAI-generated explanations
        +-- Optional Google Places API (live discovery; not cached permanently)
+       +-- Optional Open-Meteo same-day forecasts (evaluation/non-commercial use)
        
 Approved activity data -> validation/upsert -> PostgreSQL
                           ^
@@ -37,7 +39,7 @@ Approved activity data -> validation/upsert -> PostgreSQL
 |---|---|
 | Backend | FastAPI, Python, Pydantic |
 | Database | Supabase PostgreSQL + psycopg |
-| Recommendations | Python matching/ranking + optional OpenAI |
+| Recommendations | Python matching/ranking, optional OpenAI and weather adjustment |
 | Place discovery | Google Places API (New), optional |
 | Hosting | GCP Cloud Run |
 | Scheduled updates | Cloud Run Jobs + Cloud Scheduler (Calgary configured) |
@@ -135,6 +137,27 @@ The PostgreSQL schema is defined in `app/database.py`. Use the **Supabase Sessio
 
 The table should have row-level security enabled, and production access should use least-privilege database accounts. Store the production `DATABASE_URL` in Google Cloud Secret Manager. Rotate any credential that was previously exposed.
 
+## Weather-aware recommendations (optional)
+
+Little Roam can apply a **same-day forecast** to activity ranking for Calgary, Canmore, and Banff. This uses the official Open-Meteo API interface with daily maximum temperature, maximum precipitation probability, maximum wind speed, and weather code. See [WEATHER_INTEGRATION.md](WEATHER_INTEGRATION.md) for details, limitations, test instructions, and provider licensing.
+
+- **Default:** `WEATHER_PROVIDER=off`. No weather requests or forecast-based adjustments.
+- **Evaluation only:** `WEATHER_PROVIDER=open_meteo`. The public endpoint's free access is for non-commercial usage. Before launching a commercial site, arrange a suitable paid/commercial weather service or use an alternative provider with appropriate terms.
+- Weather is based on **today in America/Edmonton**, not user-selected future days, real-time weather, or a weather alert feed.
+- In a multi-town regional search, forecast context is associated with the activity's **nearest supported town**, not necessarily the Calgary search origin.
+- On days with adverse forecast indicators, indoor activities get a modest relevance boost; outdoor activities are not removed.
+- Forecast lookups are cached in-process for 15 minutes. Provider failures do not interrupt recommendations.
+
+To try weather locally in Cloud Shell after fetching the latest code and configuring PostgreSQL:
+
+```bash
+export WEATHER_PROVIDER=open_meteo
+python -m pytest -q
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+Run `POST /api/v1/recommendations` in Swagger. Returned activities may include `weather_summary` and `weather_source`. Do not present this forecast as confirmation that an outdoor activity is safe, open, or suitable for a child. Set `WEATHER_PROVIDER=off` to disable the feature.
+
 ## Activity ingestion and daily refresh
 
 - `app/refresh.py` reads an authorized HTTPS JSON activity feed and upserts records using stable IDs.
@@ -150,7 +173,7 @@ Daily scheduler configuration is in place; routine execution health and monitori
 
 See [CLOUD_RUN_DEPLOY.md](CLOUD_RUN_DEPLOY.md) for private Cloud Run deployment. The initial script deploys in mock mode. For PostgreSQL mode, configure `PLACES_PROVIDER=postgres` and inject `DATABASE_URL` through Secret Manager.
 
-Cloud Run, source builds, network traffic, AI requests, Google Places and managed database usage can incur charges. Configure billing alerts and quotas before public launch.
+Cloud Run, source builds, network traffic, AI requests, Google Routes/Places and managed database usage can incur charges. Configure billing alerts and quotas before public launch.
 
 ## Tests
 
@@ -163,7 +186,7 @@ python -m pytest -q
 1. Monitor the scheduled Calgary importer and verify source licensing and deduplication.
 2. Expand ingestion to additional official Canmore and Banff sources.
 3. Add verified family-specific activity data: ages, pricing, opening times and event schedules.
-4. Improve driving-time search candidate selection, routing cost controls and integrate Canadian weather.
+4. Improve driving-time search candidate selection, routing cost controls and licensed Canadian weather coverage.
 5. Add authentication, usage limits, evaluation, and the family-facing website.
 6. Expand to additional Canadian cities and bilingual support.
 
