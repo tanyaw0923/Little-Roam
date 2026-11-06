@@ -77,6 +77,11 @@ def apply_official_hours(candidates, rows, visit_date=None, today=None):
             updated.append(c)
             continue
         updates = {}
+        # A vetted official venue-hours page is also a safe website fallback
+        # when the activity has no independently sourced official URL.
+        from .websites import valid_website_url
+        if not valid_website_url(c.website_url):
+            updates.update(website_url=row['source_url'], website_source='curated')
         if weekly:
             updates.update(
                 published_weekly_hours=weekly,
