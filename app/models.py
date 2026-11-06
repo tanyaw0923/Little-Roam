@@ -68,7 +68,6 @@ class Candidate(BaseModel):
     hours_status_source: Literal['google_places','unknown'] = 'unknown'
     hours_date_notice: str | None = None
     published_weekly_hours: list[str] = Field(default_factory=list)
-    hours_for_visit_date: Literal['unknown'] = 'unknown'
     weather_score_adjustment: float = Field(default=0.0, exclude=True)
     google_maps_url: str | None = None
     website_url: str | None = None
@@ -104,7 +103,6 @@ class Recommendation(BaseModel):
     hours_date_notice: str | None = None
     published_weekly_hours: list[str] = Field(default_factory=list)
     visit_day_hours: str | None = None
-    hours_for_visit_date: Literal['unknown'] = 'unknown'
     admission_price_cad: float | None = None
     hours_verified: bool = False
     hours_schedule_verified: bool = False
