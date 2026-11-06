@@ -48,3 +48,18 @@ def test_internal_province_alberta():
     r=RecommendationRequest(city='Banff',children_ages=[5])
     assert r.province=='AB'
     assert 'province' not in r.model_dump()
+
+
+def test_optional_visit_date_in_openapi_and_response(monkeypatch):
+    from datetime import datetime, timedelta
+    from zoneinfo import ZoneInfo
+    monkeypatch.setenv('PLACES_PROVIDER','mock')
+    monkeypatch.setenv('WEATHER_PROVIDER','off')
+    tomorrow=(datetime.now(ZoneInfo('America/Edmonton')).date()+timedelta(days=1)).isoformat()
+    schema=client.get('/openapi.json').json()
+    assert 'visit_date' in schema['components']['schemas']['RecommendationRequest']['properties']
+    r=client.post('/api/v1/recommendations',json={
+        'city':'Calgary','children_ages':[4],'visit_date':tomorrow})
+    assert r.status_code==200
+    assert r.json()['visit_date']==tomorrow
+    assert all(x['hours_for_visit_date']=='unknown' for x in r.json()['recommendations'])
