@@ -32,8 +32,9 @@ async def recommendations(payload:RecommendationRequest):
     eligible_candidates = [c for c in candidates if eligible(c, payload)]
     selected = sorted(eligible_candidates, key=lambda c: (-score_candidate(c,payload), c.distance_km if c.distance_km is not None else float('inf'), c.place_id))[:payload.max_results]
     selected,matching_warning=await match_missing_place_ids(selected)
-    selected,details_warning=await enrich_place_details(selected)
+    # Approved official schedules are first-party evidence; Google is the fallback.
     selected,official_hours_warning=await enrich_official_hours(selected, payload.visit_date)
+    selected,details_warning=await enrich_place_details(selected)
     results=await recommend(selected,payload)
     warnings=['Demo data only; no listed attractions are real.' if mode=='mock' else
               'Activity details require independent verification from permitted sources; confirm hours, prices and age suitability.',
