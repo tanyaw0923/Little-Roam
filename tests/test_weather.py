@@ -131,7 +131,7 @@ def test_date_specific_forecast_is_passed_to_provider(monkeypatch):
     r=RecommendationRequest(city="Calgary",children_ages=[2],visit_date=selected)
     c=activity("park","outdoor")
     out,w=asyncio.run(add_weather([c],r))
-    assert called==[("banff",selected.isoformat())]
+    assert called==[("calgary",selected.isoformat())]
     assert selected.isoformat() in out[0].weather_summary
     assert w is None
 
@@ -150,3 +150,27 @@ def test_response_does_not_claim_open_on_visit_date():
     result=asyncio.run(recommend([c],r))
     assert result[0].hours_status=="open_now"
     assert result[0].hours_for_visit_date=="unknown"
+
+
+def test_regional_weather_uses_destination_town(monkeypatch):
+    monkeypatch.setenv("WEATHER_PROVIDER", "open_meteo")
+    selected = datetime.now(ZoneInfo("America/Edmonton")).date() + timedelta(days=2)
+    called = []
+
+    async def fake_forecast(town, outing_date=None):
+        called.append((town, outing_date))
+        return interpret_daily({
+            "time": [outing_date],
+            "temperature_2m_max": [7],
+            "precipitation_probability_max": [20],
+            "wind_speed_10m_max": [15],
+            "weather_code": [1],
+        }, town, outing_date)
+
+    monkeypatch.setattr("app.weather.get_town_forecast", fake_forecast)
+    r = RecommendationRequest(city="Calgary", children_ages=[2],
+                              search_scope="regional", visit_date=selected)
+    out, warning = asyncio.run(add_weather([activity("banff_park", "outdoor")], r))
+    assert called == [("banff", selected.isoformat())]
+    assert out[0].weather_summary.startswith("Banff forecast")
+    assert warning is None
