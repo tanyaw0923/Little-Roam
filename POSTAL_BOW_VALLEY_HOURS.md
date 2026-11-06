@@ -19,7 +19,6 @@ Example:
 ```json
 {
   "city": "Calgary",
-  "province": "AB",
   "postal_code": "T2P 1J9",
   "search_scope": "regional",
   "max_drive_minutes": 120,
