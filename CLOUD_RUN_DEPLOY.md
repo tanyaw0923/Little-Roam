@@ -104,7 +104,7 @@ curl --fail-with-body -sS -H "Authorization: Bearer $TOKEN" "$URL/health"
 curl --fail-with-body -sS -X POST "$URL/api/v1/recommendations" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"city":"Calgary","province":"AB","children_ages":[2,6],"interests":["nature"],"activity_type":"any","budget":"any","max_results":10}'
+  -d '{"city":"Calgary","children_ages":[2,6],"interests":["nature"],"activity_type":"any","budget":"any","max_results":10}'
 ```
 
 Then run **one** paid Routes test:
@@ -113,7 +113,7 @@ Then run **one** paid Routes test:
 curl --fail-with-body -sS -X POST "$URL/api/v1/recommendations" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"city":"Calgary","province":"AB","search_scope":"regional","max_drive_minutes":120,"children_ages":[2,6],"interests":["nature","recreation"],"activity_type":"any","budget":"any","max_results":10}'
+  -d '{"city":"Calgary","search_scope":"regional","max_drive_minutes":120,"children_ages":[2,6],"interests":["nature","recreation"],"activity_type":"any","budget":"any","max_results":10}'
 ```
 
 For regional results expect `drive_minutes` and road `distance_km`; a maximum of **10 candidate destinations** is sent to Routes API in each request. The actual result count may be smaller due to missing routes, price/age constraints, or the driving-time threshold.
