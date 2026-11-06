@@ -87,3 +87,51 @@ def test_no_assumed_hours_for_future_date():
 def test_place_id_mismatch_rejected():
     assert parse_details({"id":"ChIJwrong","websiteUri":"https://bad.example"},
                          "ChIJexpected",True,True)=={}
+
+
+def test_approved_official_schedule_skips_billable_google_hours(monkeypatch):
+    monkeypatch.setenv("HOURS_PROVIDER", "google_places")
+    monkeypatch.setenv("WEBSITE_PROVIDER", "off")
+    monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "fake")
+    class ForbiddenClient:
+        def __init__(self, **kwargs):
+            raise AssertionError("Official schedule should not call Google")
+    monkeypatch.setattr("app.place_details.httpx.AsyncClient", ForbiddenClient)
+    from datetime import date
+    c=candidate(google_place_id="ChIJverified").model_copy(update={
+        "hours_source": "official_website",
+        "published_weekly_hours": ["Friday: 09:00 - 17:00"],
+    })
+    result,warning=asyncio.run(enrich_place_details([c], date(2026,11,6)))
+    assert result[0].published_weekly_hours == ["Friday: 09:00 - 17:00"]
+    assert result[0].hours_source == "official_website"
+    assert warning is None
+
+
+def test_google_fallback_if_official_schedule_lacks_selected_weekday(monkeypatch):
+    monkeypatch.setenv("HOURS_PROVIDER", "google_places")
+    monkeypatch.setenv("WEBSITE_PROVIDER", "off")
+    monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "fake")
+    calls=[]
+    class Response:
+        def raise_for_status(self): pass
+        def json(self):
+            return {"id": "ChIJverified", "regularOpeningHours": {
+                "weekdayDescriptions": ["Friday: 10 AM - 6 PM"]}}
+    class Client:
+        def __init__(self, **kwargs): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): pass
+        async def get(self, url, headers):
+            calls.append(url)
+            return Response()
+    monkeypatch.setattr("app.place_details.httpx.AsyncClient", Client)
+    from datetime import date
+    c=candidate(google_place_id="ChIJverified").model_copy(update={
+        "hours_source": "official_website",
+        "published_weekly_hours": ["Monday: 09:00 - 17:00"],
+    })
+    result,warning=asyncio.run(enrich_place_details([c], date(2026,11,6)))
+    assert len(calls) == 1
+    assert result[0].hours_source == "google_places"
+    assert result[0].published_weekly_hours == ["Friday: 10 AM - 6 PM"]
