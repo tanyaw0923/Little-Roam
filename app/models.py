@@ -1,3 +1,5 @@
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 from typing import Literal
 from pydantic import BaseModel, Field, PrivateAttr, field_validator, model_validator
 
@@ -13,6 +15,7 @@ class RecommendationRequest(BaseModel):
     budget: Budget = 'any'
     search_scope: Literal['city', 'regional'] = 'city'
     postal_code: str | None = Field(default=None, max_length=8)
+    visit_date: date | None = Field(default=None, description='Outing date (YYYY-MM-DD); defaults to today in Alberta. Forecast available up to 15 days ahead.')
     _resolved_origin: tuple[float,float] | None = PrivateAttr(default=None)
     max_drive_minutes: Literal[30, 60, 120] = 60
     max_results: int = Field(default=10, ge=1, le=10)
@@ -24,6 +27,9 @@ class RecommendationRequest(BaseModel):
 
     @model_validator(mode='after')
     def ensure_regional_origin(self):
+        today = datetime.now(ZoneInfo('America/Edmonton')).date()
+        if self.visit_date is not None and not today <= self.visit_date <= today + timedelta(days=15):
+            raise ValueError('visit_date must be today or within the next 15 days (Alberta local date)')
         if self.postal_code is not None:
             from .postal import normalize_postal_code
             self.postal_code = normalize_postal_code(self.postal_code)
@@ -58,6 +64,7 @@ class Candidate(BaseModel):
     hours_source_url: str | None = None
     hours_checked_at: str | None = None
     published_weekly_hours: list[str] = Field(default_factory=list)
+    hours_for_visit_date: Literal['unknown'] = 'unknown'
     weather_score_adjustment: float = Field(default=0.0, exclude=True)
     google_maps_url: str | None = None
     website_url: str | None = None
@@ -81,9 +88,10 @@ class Recommendation(BaseModel):
     drive_minutes: float | None = None
     weather_summary: str | None = None
     weather_source: str | None = None
-    hours_status: Literal['open_now','closed_now','unknown'] = 'unknown'
+    hours_status: Literal['open_now','closed_now','permanently_closed','unknown'] = 'unknown'
     hours_source_url: str | None = None
     hours_checked_at: str | None = None
+    hours_for_visit_date: Literal['unknown'] = 'unknown'
     admission_price_cad: float | None = None
     hours_verified: bool = False
     reason: str
@@ -92,6 +100,7 @@ class Recommendation(BaseModel):
     score: float
 
 class RecommendationResponse(BaseModel):
+    visit_date: date | None = None
     city: str
     province: Province
     mode: str
