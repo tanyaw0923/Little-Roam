@@ -64,7 +64,6 @@ def test_explicit_date_notice_is_not_claim_of_activity_availability():
     result=apply_official_hours([c], {("town_banff_curated", "fenlands"): row},
                                 visit_date=selected)[0]
     assert "closed" in result.hours_date_notice
-    assert result.hours_for_visit_date == "unknown"
 
 
 def test_provider_disabled_does_not_access_database(monkeypatch):
@@ -103,4 +102,4 @@ def test_official_hours_response_serialization():
     assert result["published_weekly_hours"] == expected
     assert result["visit_day_hours"] == (expected[0] if expected else None)
     assert result["hours_schedule_verified"] is bool(expected)
-    assert result["hours_for_visit_date"]=="unknown"
+    assert "hours_for_visit_date" not in result
