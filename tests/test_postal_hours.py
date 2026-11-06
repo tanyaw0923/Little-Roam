@@ -13,7 +13,7 @@ from app.hours import verify_hours, _fetch_hours, MAX_HOURS_REQUESTS
 
 
 def request(**kwargs):
-    return RecommendationRequest(city="Calgary", province="AB", children_ages=[2], **kwargs)
+    return RecommendationRequest(city="Calgary",  children_ages=[2], **kwargs)
 
 
 def test_postal_normalizes_case_spacing():
