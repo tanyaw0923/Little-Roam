@@ -12,7 +12,7 @@ Little Roam is an early-stage Python/FastAPI backend that recommends family outi
 - ✅ Generic PostgreSQL JSON-feed refresh and unit tests in repository
 - ✅ Calgary-specific importer is committed in `app/calgary_import.py`
 - ✅ Calgary Cloud Run daily importer deployed and Scheduler trigger configured (as reported in deployment setup)
-- ✅ Optional weather-aware ranking implemented in GitHub (not yet live-tested or deployed)
+- ✅ Optional weather-aware ranking locally tested (public/cloud service not yet deployed); outing-date selection newly implemented and awaiting tests
 - ✅ Alberta postal-code origin, additional Bow Valley venue seed, and optional hours verification implemented in code (live integration not yet validated)
 - ⏳ Public website not yet deployed
 
@@ -29,7 +29,7 @@ FastAPI /api/v1/recommendations
        +-- PostgreSQL (Supabase): curated/licensed Canadian activities
        +-- Python ranking and optional OpenAI-generated explanations
        +-- Optional Google Places API (live discovery; not cached permanently)
-       +-- Optional Open-Meteo same-day forecasts (evaluation/non-commercial use)
+       +-- Optional Open-Meteo outing-date forecasts (evaluation/non-commercial use)
        +-- Optional Geocoding API (Alberta postal-code origin)
        +-- Optional Places Details (reported venue hours)
        
@@ -109,6 +109,24 @@ gcloud services enable routes.googleapis.com --project="$(gcloud config get-valu
 ```
 
 **Security:** Never paste database URLs or API key values into GitHub, issues, logs, or chat. Secrets exported in Cloud Shell persist in that shell session; stop the server and run `unset DATABASE_URL GOOGLE_ROUTES_API_KEY` when finished. For production, inject the secrets into the **FastAPI Cloud Run service** using Secret Manager, not into client-side code. The API service has not been confirmed deployed with this new regional feature.
+
+### Plan an outing on a specific date
+
+Requests can include **`visit_date`** in `YYYY-MM-DD` format. If omitted, the API uses today's date in Alberta. The supported window is today through 15 days ahead. The optional Open-Meteo weather provider requests that **exact day's daily forecast** separately for Calgary/Canmore/Banff destinations; it does not invent forecasts beyond the provider's published horizon. See [WEATHER_INTEGRATION.md](WEATHER_INTEGRATION.md).
+
+Example for November 8, 2026 (update to a date within 15 days of the day you test):
+
+```json
+{
+  "city": "Calgary",
+  "visit_date": "2026-11-08",
+  "children_ages": [2, 6],
+  "interests": ["nature", "swimming"],
+  "max_results": 10
+}
+```
+
+**Hours are not yet confirmed for the selected visit date.** The API distinguishes the venue's reported **open-now** status and published weekly opening hours from `hours_for_visit_date: "unknown"`. Swimming, skating, holiday opening and other session schedules require separate date-specific evidence; never infer them from weekly hours. Optional live Places lookups incur charges and require verified Place ID mappings. The City of Calgary daily importer is unchanged.
 
 ### Recommend family activities
 
