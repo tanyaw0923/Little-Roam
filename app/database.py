@@ -45,30 +45,35 @@ def _fetch(r: RecommendationRequest):
 
     with psycopg.connect(require_db_url(), row_factory=dict_row, connect_timeout=8) as conn:
         with conn.cursor() as cur:
+            cur.execute("SELECT to_regclass('public.activity_place_mappings') IS NOT NULL AS linked")
+            has_mappings = cur.fetchone()['linked']
+            join = (' LEFT JOIN public.activity_place_mappings m ON '
+                    'a.source_id=m.source_id AND a.activity_id=m.activity_id') if has_mappings else ''
+            place_id_column = 'm.google_place_id' if has_mappings else 'NULL::TEXT'
             if r.search_scope == 'regional':
                 # Do not invent locations for records that have no coordinates.
                 origin = request_origin(r)
                 if origin is None:
                     raise ValueError('Unsupported regional search origin')
                 min_lat, max_lat, min_lon, max_lon = bounding_box(*origin, 250)
-                cur.execute("""SELECT source_id, activity_id, name, address, latitude, longitude,
-                                      website_url, activity_type, categories, price_category,
-                                      min_age, max_age
-                               FROM activities
-                               WHERE active = TRUE AND province = %s
-                                 AND latitude BETWEEN %s AND %s
-                                 AND longitude BETWEEN %s AND %s
-                               ORDER BY updated_at DESC, activity_id
+                cur.execute(f"""SELECT a.source_id, a.activity_id, a.name, a.address, a.latitude, a.longitude,
+                                      a.website_url, a.activity_type, a.categories, a.price_category,
+                                      a.min_age, a.max_age, {place_id_column} AS google_place_id
+                               FROM activities a {join}
+                               WHERE a.active = TRUE AND a.province = %s
+                                 AND a.latitude BETWEEN %s AND %s
+                                 AND a.longitude BETWEEN %s AND %s
+                               ORDER BY a.updated_at DESC, a.activity_id
                                LIMIT 10000""",
                             (r.province, min_lat, max_lat, min_lon, max_lon))
             else:
-                cur.execute("""SELECT source_id, activity_id, name, address, latitude, longitude,
-                                      website_url, activity_type, categories, price_category,
-                                      min_age, max_age
-                               FROM activities
-                               WHERE active = TRUE AND province = %s
-                                 AND lower(city) = lower(%s)
-                               ORDER BY updated_at DESC, activity_id
+                cur.execute(f"""SELECT a.source_id, a.activity_id, a.name, a.address, a.latitude, a.longitude,
+                                      a.website_url, a.activity_type, a.categories, a.price_category,
+                                      a.min_age, a.max_age, {place_id_column} AS google_place_id
+                               FROM activities a {join}
+                               WHERE a.active = TRUE AND a.province = %s
+                                 AND lower(a.city) = lower(%s)
+                               ORDER BY a.updated_at DESC, a.activity_id
                                LIMIT 500""",
                             (r.province, r.city))
             rows = cur.fetchall()
@@ -79,7 +84,7 @@ def _fetch(r: RecommendationRequest):
             place_id=f"{x['source_id']}:{x['activity_id']}",
             name=x['name'], address=x['address'],
             latitude=x['latitude'], longitude=x['longitude'],
-            website_url=x['website_url'], activity_type=x['activity_type'],
+            website_url=x['website_url'], google_place_id=x['google_place_id'], activity_type=x['activity_type'],
             categories=x['categories'], price_category=x['price_category'],
             min_age=x['min_age'], max_age=x['max_age'], source='curated'))
     return candidates
