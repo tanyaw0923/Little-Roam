@@ -304,7 +304,7 @@ def approve(conn, source_id, activity_id, reviewer, days=14):
                   notes=EXCLUDED.notes
             """, (source_id, activity_id, row["discovered_hours"], row["source_url"],
                   (datetime.now(timezone.utc) + timedelta(days=days)).date(),
-                  f"Manually reviewed by {reviewer}; structured official-site schedule. "
+                  f"Manually reviewed by {reviewer}; official-site schedule. "
                   "Holiday/seasonal exceptions require independent review."))
             cur.execute("""
                 DELETE FROM public.activity_hours_review_queue
