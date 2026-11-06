@@ -8,7 +8,7 @@ def score_candidate(c:Candidate, r:RecommendationRequest)->float:
     interest_words=set(' '.join(r.interests).lower().replace('_',' ').split())
     candidate_words=set(' '.join([c.name,*c.categories]).lower().replace('_',' ').split())
     overlap=len(interest_words & candidate_words)
-    return round(1.0 + 2.0*overlap + (0.5 if c.price_category=='free' else 0),2)
+    return round(1.0 + 2.0*overlap + (0.5 if c.price_category=='free' else 0) + c.weather_score_adjustment,2)
 
 def eligible(c:Candidate,r:RecommendationRequest)->bool:
     if r.activity_type!='any' and c.activity_type not in (r.activity_type,'any'):
@@ -57,6 +57,7 @@ async def recommend(candidates:list[Candidate],r:RecommendationRequest)->list[Re
             'Confirm operating hours, admission fees, and child facilities before visiting.'))
         out.append(Recommendation(place_id=c.place_id,name=c.name,address=c.address,
             google_maps_url=c.google_maps_url,website_url=c.website_url,
-            activity_type=c.activity_type,distance_km=c.distance_km,drive_minutes=c.drive_minutes,reason=reason,parent_tip=tip,
+            activity_type=c.activity_type,distance_km=c.distance_km,drive_minutes=c.drive_minutes,
+            weather_summary=c.weather_summary,weather_source=c.weather_source,reason=reason,parent_tip=tip,
             source=c.source,score=score_candidate(c,r)))
     return out
