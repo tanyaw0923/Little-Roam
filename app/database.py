@@ -68,7 +68,7 @@ def _fetch(r: RecommendationRequest):
                             (r.province, min_lat, max_lat, min_lon, max_lon))
             else:
                 cur.execute(f"""SELECT a.source_id, a.activity_id, a.name, a.address, a.latitude, a.longitude,
-                                      a.website_url, a.activity_type, a.categories, a.price_category,
+                                      a.website_url, a.source_url, a.activity_type, a.categories, a.price_category,
                                       a.min_age, a.max_age, {place_id_column} AS google_place_id
                                FROM activities a {join}
                                WHERE a.active = TRUE AND a.province = %s
