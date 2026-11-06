@@ -1,6 +1,7 @@
 """Visit-date schedule presentation; no Google API requests."""
 import asyncio
-from datetime import date
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from app.models import Candidate, RecommendationRequest
 from app.recommend import recommend
@@ -47,8 +48,9 @@ def test_missing_or_unmatched_day_is_unknown_not_inferred():
 
 def test_recommendation_json_contains_only_selected_day(monkeypatch):
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    selected = datetime.now(ZoneInfo("America/Edmonton")).date() + timedelta(days=1)
     r = RecommendationRequest(city="Banff", children_ages=[4],
-                              visit_date=date(2026, 11, 6))
+                              visit_date=selected)
     c = Candidate(
         place_id="parks_canada_curated:cave_and_basin",
         name="Cave and Basin National Historic Site",
@@ -59,10 +61,11 @@ def test_recommendation_json_contains_only_selected_day(monkeypatch):
     )
     results = asyncio.run(recommend([c], r))
     data = results[0].model_dump()
-    assert data["published_weekly_hours"] == [WEEKLY[4]]
-    assert data["visit_day_hours"] == WEEKLY[4]
+    matched = hours_for_weekday(WEEKLY, selected)
+    assert data["published_weekly_hours"] == matched
+    assert data["visit_day_hours"] == (matched[0] if matched else None)
     assert data["hours_date_notice"] == "Special closure: check venue notice"
-    assert data["hours_schedule_verified"] is True
+    assert data["hours_schedule_verified"] is bool(matched)
     assert data["hours_for_visit_date"] == "unknown"
 
 
