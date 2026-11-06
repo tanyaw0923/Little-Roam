@@ -58,6 +58,8 @@ def parse_details(data: dict, place_id: str, want_websites: bool, want_hours: bo
             result.update(
                 hours_status=status,
                 hours_status_source="google_places" if status != "unknown" else "unknown",
+                hours_status_checked_at=(datetime.now(timezone.utc).isoformat()
+                                         if status != "unknown" else None),
                 hours_source="google_places",
                 published_weekly_hours=descriptions,
                 hours_checked_at=datetime.now(timezone.utc).isoformat(),
