@@ -13,6 +13,7 @@ from urllib.parse import quote
 import httpx
 
 from .websites import valid_website_url, maps_search_url, PLACE_ID_PATTERN
+from .visit_hours import chosen_visit_date, hours_for_weekday
 
 logger = logging.getLogger(__name__)
 PLACE_DETAILS_URL = "https://places.googleapis.com/v1/places/"
@@ -69,7 +70,7 @@ def parse_details(data: dict, place_id: str, want_websites: bool, want_hours: bo
     return result
 
 
-async def enrich_place_details(candidates):
+async def enrich_place_details(candidates, visit_date=None):
     """Add optional live URLs and hours in ONE Place Details call per venue.
 
     WEBSITE_PROVIDER / HOURS_PROVIDER toggle their fields individually.
@@ -77,6 +78,7 @@ async def enrich_place_details(candidates):
     """
     want_websites = os.getenv("WEBSITE_PROVIDER", "off").lower() == "google_places"
     want_hours = os.getenv("HOURS_PROVIDER", "off").lower() == "google_places"
+    selected_day = chosen_visit_date(visit_date)
     result = [c.model_copy(update={
         "google_maps_url": c.google_maps_url or maps_search_url(c),
         "website_url": valid_website_url(c.website_url),
@@ -92,15 +94,15 @@ async def enrich_place_details(candidates):
     # Website details remain optional even when official hours exist.
     targets = [
         (index, c.google_place_id, bool(want_websites and not valid_website_url(c.website_url)),
-         bool(want_hours and c.hours_source == "unknown"))
+         bool(want_hours and not hours_for_weekday(c.published_weekly_hours, selected_day)))
         for index, c in enumerate(result)
         if isinstance(c.google_place_id, str)
         and PLACE_ID_PATTERN.fullmatch(c.google_place_id)
-        and ((want_hours and c.hours_source == "unknown")
+        and ((want_hours and not hours_for_weekday(c.published_weekly_hours, selected_day))
              or (want_websites and not valid_website_url(c.website_url)))
     ][:MAX_DETAILS_LOOKUPS]
     if not targets:
-        if want_hours and any(c.google_place_id is None and c.hours_source == "unknown" for c in result):
+        if want_hours and any(c.google_place_id is None and not hours_for_weekday(c.published_weekly_hours, selected_day) for c in result):
             return result, "Some venues lack verified Google Place IDs; operating hours remain unknown."
         return result, None
     async with httpx.AsyncClient(timeout=10) as client:
