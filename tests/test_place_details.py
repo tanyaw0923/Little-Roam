@@ -39,7 +39,7 @@ def test_combined_details_returns_url_and_hours_in_one_call(monkeypatch):
     assert data[0].website_source=="google_places"
     assert data[0].hours_status=="open_now"
     assert data[0].published_weekly_hours==["Monday: 9 AM–5 PM"]
-    assert data[0].hours_for_visit_date=="unknown"
+    assert "hours_for_visit_date" not in data[0].model_dump()
 
 
 def test_existing_curated_url_never_overwritten(monkeypatch):
