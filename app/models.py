@@ -51,9 +51,10 @@ class Candidate(BaseModel):
     drive_minutes: float | None = None
     weather_summary: str | None = None
     weather_source: str | None = None
-    hours_status: Literal['open_now','closed_now','unknown'] = 'unknown'
+    hours_status: Literal['open_now','closed_now','permanently_closed','unknown'] = 'unknown'
     hours_source_url: str | None = None
     hours_checked_at: str | None = None
+    published_weekly_hours: list[str] = Field(default_factory=list)
     weather_score_adjustment: float = Field(default=0.0, exclude=True)
     google_maps_url: str | None = None
     website_url: str | None = None
