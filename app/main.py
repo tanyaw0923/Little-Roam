@@ -20,7 +20,7 @@ def health():
 async def recommendations(payload:RecommendationRequest):
     if payload.search_scope == 'regional' and payload.postal_code:
         lat, lon = await resolve_postal_origin(payload.postal_code, payload.province)
-        payload = payload.model_copy(update={'origin_latitude': lat, 'origin_longitude': lon})
+        payload._resolved_origin = (lat, lon)
     mode,candidates=await discover(payload)
     candidates=await filter_by_driving_time(candidates,payload)
     candidates,weather_warning=await add_weather(candidates,payload)
