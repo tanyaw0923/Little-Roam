@@ -12,7 +12,7 @@ from app.recommend import recommend
 
 
 def request(**kwargs):
-    return RecommendationRequest(city='Calgary', province='AB', children_ages=[2, 6], **kwargs)
+    return RecommendationRequest(city='Calgary',  children_ages=[2, 6], **kwargs)
 
 
 def candidate(ident, lat, lon, categories=None):
@@ -29,7 +29,7 @@ def test_regional_origin_and_drive_options():
 
 def test_regional_rejects_unsupported_origin():
     with pytest.raises(ValidationError, match='Regional search currently supports'):
-        RecommendationRequest(city='Toronto', province='ON', children_ages=[4], search_scope='regional')
+        RecommendationRequest(city='Toronto',  children_ages=[4], search_scope='regional')
 
 
 def test_city_scope_remains_default():
