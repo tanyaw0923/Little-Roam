@@ -71,8 +71,9 @@ def test_recommendation_json_contains_only_selected_day(monkeypatch):
 
 def test_missing_day_clears_verified_schedule_flag(monkeypatch):
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    selected = datetime.now(ZoneInfo("America/Edmonton")).date() + timedelta(days=1)
     r = RecommendationRequest(city="Banff", children_ages=[4],
-                              visit_date=date(2026, 11, 6))
+                              visit_date=selected)
     missing_day = ("Monday" if selected.weekday() != 0 else "Tuesday")
     c = Candidate(place_id="x", name="Example", address="Banff, AB",
                   source="curated", hours_source="official_website",
