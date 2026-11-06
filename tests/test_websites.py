@@ -92,3 +92,20 @@ def test_website_lookup_capped_to_ten(monkeypatch):
     assert len(calls)==10
     assert len(result)==15
     assert warning is not None
+
+
+def test_recommendation_serializes_google_website_and_provenance():
+    from app.recommend import recommend
+    from app.models import RecommendationRequest
+    c=activity(google_place_id="ChIJverified").model_copy(update={
+        "website_url": "https://venue.example/visit",
+        "website_source": "google_places",
+        "official_source_url": "https://calgary.ca/recreation",
+        "google_maps_url": "https://www.google.com/maps/search/?api=1&query=venue",
+    })
+    response=asyncio.run(recommend([c],RecommendationRequest(
+        city="Calgary",children_ages=[2])))
+    data=response[0].model_dump()
+    assert data["website_url"]=="https://venue.example/visit"
+    assert data["website_source"]=="google_places"
+    assert data["official_source_url"]=="https://calgary.ca/recreation"
