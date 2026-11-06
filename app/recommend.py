@@ -37,7 +37,7 @@ async def explain(selected:list[Candidate],r:RecommendationRequest)->dict[str,tu
         result=await client.beta.chat.completions.parse(
             model=os.getenv('OPENAI_MODEL','gpt-4.1-mini'),
             messages=[{'role':'system','content':'Write concise helpful family recommendation copy. Use ONLY given place names/types/categories; never claim hours, safety, admission prices, weather, accessibility, age suitability or amenities without provided evidence. Avoid certainty. Return one entry per place ID.'},
-                      {'role':'user','content':json.dumps({'family':r.model_dump(exclude={'postal_code'}),'places':data})}],
+                      {'role':'user','content':json.dumps({'family':r.model_dump(mode='json', exclude={'postal_code'}),'places':data})}],
             response_format=Batch)
         parsed=result.choices[0].message.parsed
         allowed={c.place_id for c in selected}
