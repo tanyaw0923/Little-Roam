@@ -102,6 +102,7 @@ class Recommendation(BaseModel):
     hours_source: Literal['official_website','google_places','unknown'] = 'unknown'
     hours_status_source: Literal['google_places','unknown'] = 'unknown'
     hours_date_notice: str | None = None
+    published_weekly_hours: list[str] = Field(default_factory=list)
     hours_for_visit_date: Literal['unknown'] = 'unknown'
     admission_price_cad: float | None = None
     hours_verified: bool = False
