@@ -155,3 +155,28 @@ def test_driving_matrix_starts_at_postal_origin(monkeypatch):
     results=asyncio.run(routes_for_candidates([c],request_with_postal))
     assert len(results)==1
     assert results[0].drive_minutes==10
+
+
+def test_weekly_hours_fallback_from_google_places(monkeypatch):
+    monkeypatch.setenv("HOURS_PROVIDER", "google_places")
+    monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "fake")
+    class Response:
+        def raise_for_status(self): pass
+        def json(self):
+            return {"id": "ChIJverified",
+                    "regularOpeningHours": {"weekdayDescriptions": [
+                        "Monday: 9 AM–5 PM", "Tuesday: 9 AM–5 PM"]}}
+    class Client:
+        def __init__(self, **kwargs): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): pass
+        async def get(self, url, headers): return Response()
+    monkeypatch.setattr("app.hours.httpx.AsyncClient", Client)
+    c=Candidate(place_id="x",name="x",address="Calgary",source="curated",
+                google_place_id="ChIJverified")
+    result, warning=asyncio.run(verify_hours([c]))
+    assert result[0].hours_status == "unknown"
+    assert result[0].published_weekly_hours == [
+        "Monday: 9 AM–5 PM", "Tuesday: 9 AM–5 PM"]
+    assert result[0].hours_checked_at is not None
+    assert warning is not None
