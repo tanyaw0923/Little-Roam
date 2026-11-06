@@ -19,7 +19,7 @@ from .geo import CENTRES, straight_line_km
 logger = logging.getLogger(__name__)
 OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
 CACHE_SECONDS = 900
-_CACHE = {}  # (province, city) -> (monotonic-expiry, forecast)
+_CACHE = {}  # (province, city, outing_date) -> (monotonic-expiry, forecast)
 
 def nearest_town(latitude: float, longitude: float) -> str:
     options = [(straight_line_km(latitude, longitude, lat, lon), city)
@@ -68,7 +68,7 @@ async def get_town_forecast(town: str, outing_date: str | None = None):
     cached = _CACHE.get(key)
     if cached and cached[0] > time.monotonic():
         return cached[1]
-    latlon = CENTRES.get(key)
+    latlon = CENTRES.get(("AB", town))
     if latlon is None:
         return None
     params = {"latitude": latlon[0], "longitude": latlon[1],
