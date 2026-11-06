@@ -63,6 +63,7 @@ class Candidate(BaseModel):
     hours_status: Literal['open_now','closed_now','permanently_closed','unknown'] = 'unknown'
     hours_source_url: str | None = None
     hours_checked_at: str | None = None
+    hours_status_checked_at: str | None = None
     hours_source: Literal['official_website','google_places','unknown'] = 'unknown'
     hours_status_source: Literal['google_places','unknown'] = 'unknown'
     hours_date_notice: str | None = None
@@ -97,12 +98,14 @@ class Recommendation(BaseModel):
     hours_status: Literal['open_now','closed_now','permanently_closed','unknown'] = 'unknown'
     hours_source_url: str | None = None
     hours_checked_at: str | None = None
+    hours_status_checked_at: str | None = None
     hours_source: Literal['official_website','google_places','unknown'] = 'unknown'
     hours_status_source: Literal['google_places','unknown'] = 'unknown'
     hours_date_notice: str | None = None
     hours_for_visit_date: Literal['unknown'] = 'unknown'
     admission_price_cad: float | None = None
     hours_verified: bool = False
+    hours_schedule_verified: bool = False
     reason: str
     parent_tip: str
     source: str
