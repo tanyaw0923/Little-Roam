@@ -14,7 +14,7 @@ import httpx
 logger=logging.getLogger(__name__)
 MAX_HOURS_REQUESTS=10
 BASE="https://places.googleapis.com/v1/places/"
-FIELD_MASK="id,businessStatus,currentOpeningHours.openNow"
+FIELD_MASK="id,businessStatus,currentOpeningHours.openNow,currentOpeningHours.weekdayDescriptions"
 
 async def _fetch_hours(client, place_id: str, api_key: str):
     if not place_id or len(place_id)>250 or not all(x.isalnum() or x in "-_" for x in place_id):
@@ -27,12 +27,17 @@ async def _fetch_hours(client, place_id: str, api_key: str):
     data=response.json()
     if data.get("id")!=place_id:
         return None
+    hours = data.get("currentOpeningHours") or {}
+    descriptions = hours.get("weekdayDescriptions") or []
+    if not isinstance(descriptions,list) or not all(isinstance(x,str) for x in descriptions):
+        descriptions = []
+    descriptions = [x[:150] for x in descriptions[:7]]
     if data.get("businessStatus") == "CLOSED_PERMANENTLY":
-        return "closed_now"
-    value=(data.get("currentOpeningHours") or {}).get("openNow")
+        return "permanently_closed", descriptions
+    value=hours.get("openNow")
     if isinstance(value, bool):
-        return "open_now" if value else "closed_now"
-    return None
+        return ("open_now" if value else "closed_now"), descriptions
+    return (None,descriptions) if descriptions else None
 
 async def verify_hours(candidates):
     """Fail-open, bounded hours lookup. Returns updated items and a warning."""
@@ -56,12 +61,14 @@ async def verify_hours(candidates):
                 return index,None
         results=await asyncio.gather(*(lookup(i,pid) for i,pid in allowed))
     checked=datetime.now(timezone.utc).isoformat()
-    for index,status in results:
-        if status is not None:
+    for index,information in results:
+        if information is not None:
+            status,weekly = information
             updated[index]=updated[index].model_copy(update={
-                "hours_status":status,
+                "hours_status":status or "unknown",
+                "published_weekly_hours":weekly,
                 "hours_checked_at":checked,
                 "hours_source_url":"https://www.google.com/maps/search/?api=1&query=Google&query_place_id=" + updated[index].google_place_id,
             })
-    missing=sum(x is None for _,x in results)
+    missing=sum(x is None or x[0] is None for _,x in results)
     return updated, ("Some operating hours could not be confirmed and remain unknown." if missing else None)
