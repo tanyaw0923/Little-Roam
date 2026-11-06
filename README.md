@@ -147,6 +147,36 @@ Example for November 8, 2026 (update to a date within 15 days of the day you tes
 
 Returns up to 10 candidates, with names, addresses, optional URLs, scores, reasons, parent tips and warnings. When fewer eligible records exist, it returns fewer than 10 rather than fabricating places.
 
+## Venue websites and opening hours (backend only)
+
+Little Roam can optionally use **Google Places API (New)** to show official venue websites and business opening hours in the existing FastAPI recommendation JSON. It does not require a frontend or new Supabase data columns.
+
+- **First:** return the independently sourced `website_url` in Supabase if present; never overwrite it.
+- **For other venues:** when a Google Place ID is mapped, fetch `websiteUri` live from Place Details. `website_source` indicates `curated`, `google_places` or `unknown`. Google Maps search links are always available as a **separate** `google_maps_url` fallback, **not** a made-up official website.
+- **When no mapped Place ID exists:** optional exact-name-and-nearby-coordinate Text Search finds a likely Google Place ID **only** if the name matches exactly after punctuation normalization AND coordinates are within 350 m. Ambiguous matches are discarded. The IDs are used per request, not automatically saved to Supabase.
+- **Business hours:** current `hours_status` (`open_now`, `closed_now`, `permanently_closed` or `unknown`), `published_weekly_hours`, `hours_checked_at` and `hours_source_url` are returned from Google when available. `hours_for_visit_date` remains `unknown` because business opening hours cannot confirm a specific future swimming, skating or museum program.
+- **Cost controls:** up to five billable Text Search matches, ten website Place Details requests and ten hours Place Details requests per recommendation request. The website and hours requests are currently separate; enable billing alerts and API quotas.
+- **Google policies:** display Google Maps attribution for Places-derived data. Google Places content cannot be stored or scraped into the Supabase activity table; this integration only fetches it during the request. The Google Place ID is exempt from standard caching restrictions. Review Google Maps Platform service terms before launching.
+
+To enable in a **development shell**, first enable **Places API (New)** in the GCP project and create a **server-side Places API-restricted key** under `GOOGLE_MAPS_API_KEY`; the Routes-only and Geocoding-only API keys will not work for this. Store the key in Secret Manager under `little-roam-places-key` (see [POSTAL_BOW_VALLEY_HOURS.md](POSTAL_BOW_VALLEY_HOURS.md)).
+
+```bash
+export GOOGLE_MAPS_API_KEY="$(gcloud secrets versions access latest --secret=little-roam-places-key)"
+export PLACE_MATCH_PROVIDER=google_places
+export WEBSITE_PROVIDER=google_places
+export HOURS_PROVIDER=google_places
+```
+
+Restart FastAPI after exporting these values:
+
+```bash
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+If `GOOGLE_MAPS_API_KEY` is unset or Google fails, recommendations continue without verified URLs/hours. If the existing Supabase rows have no coordinates, the automatic ID matcher cannot verify them: use an authorized coordinate source and/or the optional [reviewed Place ID mapping SQL](sql/activity_place_mappings.sql). The first five unmatched results are evaluated per request, so some venues may remain unknown even when Google offers a matching listing.
+
+Google Places field documentation: https://developers.google.com/maps/documentation/places/web-service/place-details ; policies: https://developers.google.com/maps/documentation/places/web-service/policies
+
 ## Data providers
 
 Set `PLACES_PROVIDER`:
