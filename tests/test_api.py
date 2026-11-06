@@ -62,4 +62,4 @@ def test_optional_visit_date_in_openapi_and_response(monkeypatch):
         'city':'Calgary','children_ages':[4],'visit_date':tomorrow})
     assert r.status_code==200
     assert r.json()['visit_date']==tomorrow
-    assert all(x['hours_for_visit_date']=='unknown' for x in r.json()['recommendations'])
+    assert all('hours_for_visit_date' not in x for x in r.json()['recommendations'])
