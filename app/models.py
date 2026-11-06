@@ -58,6 +58,7 @@ class Candidate(BaseModel):
     weather_score_adjustment: float = Field(default=0.0, exclude=True)
     google_maps_url: str | None = None
     website_url: str | None = None
+    official_source_url: str | None = None
     activity_type: ActivityType = 'any'
     categories: list[str] = Field(default_factory=list)
     price_category: Budget = 'any'
