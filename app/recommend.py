@@ -56,7 +56,7 @@ async def recommend(candidates:list[Candidate],r:RecommendationRequest)->list[Re
             'Potential match based on your activity preferences; check the official listing for age suitability.',
             'Confirm operating hours, admission fees, and child facilities before visiting.'))
         out.append(Recommendation(place_id=c.place_id,name=c.name,address=c.address,
-            google_maps_url=c.google_maps_url,website_url=c.website_url,
+            google_maps_url=c.google_maps_url,website_url=c.website_url,official_source_url=c.official_source_url,
             activity_type=c.activity_type,distance_km=c.distance_km,drive_minutes=c.drive_minutes,
             weather_summary=c.weather_summary,weather_source=c.weather_source,
             hours_status=c.hours_status,hours_source_url=c.hours_source_url,
