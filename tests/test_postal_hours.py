@@ -33,8 +33,8 @@ def test_postal_requires_regional_scope():
 
 
 def test_postal_origin_overrides_city_centre():
-    r=request(search_scope="regional",postal_code="T2P 1J9").model_copy(
-        update={"origin_latitude":51.14, "origin_longitude":-114.18})
+    r=request(search_scope="regional",postal_code="T2P 1J9")
+    r._resolved_origin=(51.14,-114.18)
     assert request_origin(r)==(51.14,-114.18)
     c=Candidate(place_id="test",name="test",address="AB",latitude=51.14,
         longitude=-114.18,source="curated")
@@ -148,8 +148,8 @@ def test_driving_matrix_starts_at_postal_origin(monkeypatch):
             assert origin=={"latitude":51.14,"longitude":-114.18}
             return Response()
     monkeypatch.setattr("app.driving.httpx.AsyncClient",Client)
-    request_with_postal=request(search_scope="regional",postal_code="T2P 1J9").model_copy(
-        update={"origin_latitude":51.14,"origin_longitude":-114.18})
+    request_with_postal=request(search_scope="regional",postal_code="T2P 1J9")
+    request_with_postal._resolved_origin=(51.14,-114.18)
     c=Candidate(place_id="x",name="x",address="AB",
                 latitude=51.2,longitude=-114.2,source="curated")
     results=asyncio.run(routes_for_candidates([c],request_with_postal))
