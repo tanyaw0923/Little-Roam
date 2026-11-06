@@ -54,7 +54,7 @@ async def routes_for_candidates(candidates: list[Candidate], request: Recommenda
     if not key:
         raise HTTPException(503, "GOOGLE_ROUTES_API_KEY is required for regional driving searches")
 
-    origin = origin_for(request.province, request.city)
+    origin = request_origin(request)
     if origin is None:
         raise HTTPException(422, "Unsupported regional origin")
 
