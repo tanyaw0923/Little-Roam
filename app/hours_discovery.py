@@ -252,7 +252,7 @@ def approve(conn, source_id, activity_id, reviewer, days=14):
     with conn.transaction():
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute("""
-                SELECT discovered_hours,source_url,discovery_status
+                SELECT discovered_hours,source_url,discovery_status,discovered_at
                 FROM public.activity_hours_review_queue
                 WHERE source_id=%s AND activity_id=%s FOR UPDATE
             """, (source_id, activity_id))
@@ -261,6 +261,8 @@ def approve(conn, source_id, activity_id, reviewer, days=14):
                 raise ValueError("No pending structured hours to approve")
             if not safe_official_url(row["source_url"]):
                 raise ValueError("Source URL no longer approved")
+            if row["discovered_at"] is None or (datetime.now(timezone.utc) - row["discovered_at"]).days > 7:
+                raise ValueError("Discovery older than 7 days; rediscover and re-review")
             cur.execute("""
                 INSERT INTO public.activity_official_hours
                   (source_id,activity_id,weekly_hours,date_notices,source_url,
