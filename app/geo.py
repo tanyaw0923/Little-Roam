@@ -31,3 +31,10 @@ def bounding_box(lat: float, lon: float, radius_km: float) -> tuple[float, float
     lat_delta = radius_km / 110.57
     lon_delta = radius_km / max(1e-6, 111.32 * cos(radians(lat)))
     return lat - lat_delta, lat + lat_delta, lon - lon_delta, lon + lon_delta
+
+
+def request_origin(request) -> tuple[float, float] | None:
+    """Use verified postal-code origin when provided; otherwise the town centre."""
+    if request.origin_latitude is not None and request.origin_longitude is not None:
+        return (request.origin_latitude, request.origin_longitude)
+    return origin_for(request.province, request.city)
