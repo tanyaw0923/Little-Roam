@@ -65,7 +65,7 @@ def test_recommendation_json_contains_only_selected_day(monkeypatch):
     assert data["published_weekly_hours"] == matched
     assert data["visit_day_hours"] == (matched[0] if matched else None)
     assert data["hours_date_notice"] == "Special closure: check venue notice"
-    assert data["hours_schedule_verified"] is bool(matched)
+    assert data["hours_verified"] is bool(matched)
     assert "hours_for_visit_date" not in data
 
 
@@ -81,4 +81,4 @@ def test_missing_day_clears_verified_schedule_flag(monkeypatch):
     data = asyncio.run(recommend([c], r))[0].model_dump()
     assert data["visit_day_hours"] is None
     assert data["published_weekly_hours"] == []
-    assert data["hours_schedule_verified"] is False
+    assert data["hours_verified"] is False
