@@ -96,4 +96,6 @@ def test_official_hours_response_serialization():
     r=RecommendationRequest(city="Banff", children_ages=[4])
     result=asyncio.run(recommend([c],r))[0].model_dump()
     assert result["hours_source"]=="official_website"
+    assert result["published_weekly_hours"] == ["Monday: 8:30 a.m. - 8:30 p.m."]
+    assert result["hours_schedule_verified"] is True
     assert result["hours_for_visit_date"]=="unknown"
