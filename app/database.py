@@ -57,7 +57,7 @@ def _fetch(r: RecommendationRequest):
                     raise ValueError('Unsupported regional search origin')
                 min_lat, max_lat, min_lon, max_lon = bounding_box(*origin, 250)
                 cur.execute(f"""SELECT a.source_id, a.activity_id, a.name, a.address, a.latitude, a.longitude,
-                                      a.website_url, a.activity_type, a.categories, a.price_category,
+                                      a.website_url, a.source_url, a.activity_type, a.categories, a.price_category,
                                       a.min_age, a.max_age, {place_id_column} AS google_place_id
                                FROM activities a {join}
                                WHERE a.active = TRUE AND a.province = %s
@@ -84,7 +84,7 @@ def _fetch(r: RecommendationRequest):
             place_id=f"{x['source_id']}:{x['activity_id']}",
             name=x['name'], address=x['address'],
             latitude=x['latitude'], longitude=x['longitude'],
-            website_url=x['website_url'], google_place_id=x['google_place_id'], activity_type=x['activity_type'],
+            website_url=x['website_url'], official_source_url=x['source_url'], google_place_id=x['google_place_id'], activity_type=x['activity_type'],
             categories=x['categories'], price_category=x['price_category'],
             min_age=x['min_age'], max_age=x['max_age'], source='curated'))
     return candidates
