@@ -12,7 +12,7 @@ def test_health():
 
 def test_mock_returns_ten():
     os.environ['PLACES_PROVIDER']='mock'
-    response=client.post('/api/v1/recommendations',json={'city':'Calgary','province':'AB','children_ages':[2,6], 'interests':['nature']})
+    response=client.post('/api/v1/recommendations',json={'city':'Calgary','children_ages':[2,6], 'interests':['nature']})
     assert response.status_code==200
     data=response.json()
     assert data['count']==10
@@ -20,14 +20,31 @@ def test_mock_returns_ten():
     assert all(x['source']=='mock' for x in data['recommendations'])
 
 def test_invalid_age():
-    r=client.post('/api/v1/recommendations',json={'city':'Calgary','province':'AB','children_ages':[18]})
+    r=client.post('/api/v1/recommendations',json={'city':'Calgary','children_ages':[18]})
     assert r.status_code==422
 
 def test_free_budget_excludes_unknown():
-    r=RecommendationRequest(city='Calgary',province='AB',children_ages=[4],budget='free')
+    r=RecommendationRequest(city='Calgary',children_ages=[4],budget='free')
     assert not eligible(Candidate(place_id='a',name='A',address='x',source='mock'),r)
 
 def test_model_never_fabricates_ten():
-    r=RecommendationRequest(city='Calgary',province='AB',children_ages=[4])
+    r=RecommendationRequest(city='Calgary',children_ages=[4])
     c=Candidate(place_id='a',name='A',address='x',source='mock')
     assert len(asyncio.run(recommend([c],r)))==1
+
+
+def test_request_schema_does_not_require_or_show_province():
+    schema=client.get('/openapi.json').json()
+    request_schema=schema['components']['schemas']['RecommendationRequest']
+    assert 'province' not in request_schema['properties']
+    assert 'province' not in request_schema.get('required',[])
+    response=client.post('/api/v1/recommendations',json={
+        'city':'Calgary','children_ages':[4]})
+    assert response.status_code==200
+    assert response.json()['province']=='AB'
+
+
+def test_internal_province_alberta():
+    r=RecommendationRequest(city='Banff',children_ages=[5])
+    assert r.province=='AB'
+    assert 'province' not in r.model_dump()
