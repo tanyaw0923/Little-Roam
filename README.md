@@ -175,7 +175,7 @@ The existing `DATABASE_URL` is sufficient; no Google key is required for sourced
 - `hours_source`: `official_website`, `google_places`, or `unknown`.
 - `hours_source_url`: direct official venue schedule page (or Google Maps link when Google is the source).
 - `hours_checked_at`: when the listed schedule was inspected.
-- `hours_schedule_verified`: true when a non-stale schedule exists for the **selected weekday**; it does not mean actual opening or program availability has been confirmed.
+- `hours_verified`: true when a non-stale schedule exists for the **selected weekday**; it does not mean actual opening or program availability has been confirmed.
 - `hours_status`, `hours_status_source`, `hours_status_checked_at`: live venue open/closed status, only when Google supplies it.
 - `hours_date_notice`: explicitly documented notice for the selected date, if available.
 - Published weekly hours and a dated notice do not confirm a specific activity will take place at the selected time.
