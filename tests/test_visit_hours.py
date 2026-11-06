@@ -73,9 +73,10 @@ def test_missing_day_clears_verified_schedule_flag(monkeypatch):
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     r = RecommendationRequest(city="Banff", children_ages=[4],
                               visit_date=date(2026, 11, 6))
+    missing_day = ("Monday" if selected.weekday() != 0 else "Tuesday")
     c = Candidate(place_id="x", name="Example", address="Banff, AB",
                   source="curated", hours_source="official_website",
-                  published_weekly_hours=["Monday: 8 AM - 5 PM"])
+                  published_weekly_hours=[f"{missing_day}: 8 AM - 5 PM"])
     data = asyncio.run(recommend([c], r))[0].model_dump()
     assert data["visit_day_hours"] is None
     assert data["published_weekly_hours"] == []
