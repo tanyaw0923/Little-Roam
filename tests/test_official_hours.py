@@ -37,6 +37,8 @@ def test_verified_official_hours_take_priority_over_google_weekly_hours():
     assert result.hours_status == "open_now"
     assert result.hours_status_source == "google_places"
     assert result.hours_source_url == row["source_url"]
+    assert result.website_url == row["source_url"]
+    assert result.website_source == "curated"
 
 
 def test_expired_hours_not_served():
