@@ -63,8 +63,11 @@ async def enrich_websites(candidates):
     Up to ten Place Details website lookups per request, for missing URLs only.
     Fail open if the provider returns an error or lacks a website.
     """
-    updated = [c.model_copy(update={"google_maps_url": c.google_maps_url or maps_search_url(c)})
-               for c in candidates]
+    updated = [c.model_copy(update={
+        "google_maps_url": c.google_maps_url or maps_search_url(c),
+        "website_source": ("google_places" if c.source == "google_places" else "curated")
+                          if valid_website_url(c.website_url) else "unknown",
+    }) for c in candidates]
     provider = os.getenv("WEBSITE_PROVIDER", "off").lower()
     if provider == "off":
         return updated, None
@@ -93,7 +96,7 @@ async def enrich_websites(candidates):
     missing = 0
     for index, url in responses:
         if url:
-            updated[index] = updated[index].model_copy(update={"website_url": url})
+            updated[index] = updated[index].model_copy(update={"website_url": url, "website_source": "google_places"})
         else:
             missing += 1
     return updated, ("Some Google Places listings have no confirmed website; Maps links are provided instead."
