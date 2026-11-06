@@ -180,10 +180,13 @@ def find_missing_indoor(conn, limit):
             FROM public.activities a
             LEFT JOIN public.activity_official_hours h
               ON a.source_id=h.source_id AND a.activity_id=h.activity_id
+            LEFT JOIN public.activity_hours_review_queue q
+              ON a.source_id=q.source_id AND a.activity_id=q.activity_id
             WHERE a.active=TRUE AND a.activity_type='indoor'
               AND (h.source_id IS NULL OR h.valid_until<CURRENT_DATE
                    OR h.verified_at<NOW()-INTERVAL '30 days'
                    OR cardinality(h.weekly_hours)=0)
+              AND (q.source_id IS NULL OR q.discovered_at<NOW()-INTERVAL '7 days')
             ORDER BY a.city,a.name
             LIMIT %s
         """, (min(max(limit, 1), MAX_TARGETS),))
