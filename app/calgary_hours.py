@@ -18,7 +18,7 @@ MONTH_NAMES = ("January", "February", "March", "April", "May", "June",
                "July", "August", "September", "October", "November", "December")
 MONTHS = {x.lower(): x[:3] for x in MONTH_NAMES}
 CLOCK = re.compile(
-    r"\b(?:1[0-2]|0?[1-9])(?::[0-5]\d)?\s*(?:a\.?m\.?|p\.?m\.?)\b",
+    r"\b(?:1[0-2]|0?[1-9])(?::[0-5]\d)?\s*(?:a\.?m\.?|p\.?m\.?)(?=\s|$)",
     re.IGNORECASE,
 )
 WHITESPACE = re.compile(r"\s+")
