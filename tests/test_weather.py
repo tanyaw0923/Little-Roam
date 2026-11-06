@@ -48,7 +48,7 @@ def test_adverse_weather_favors_indoor(monkeypatch):
 
 def test_mild_weather_favors_outdoor(monkeypatch):
     monkeypatch.setenv("WEATHER_PROVIDER","open_meteo")
-    async def fake_forecast(town):
+    async def fake_forecast(town, outing_date=None):
         return interpret_daily({
             "time":["2026-11-06"],"temperature_2m_max":[17],
             "precipitation_probability_max":[10],"wind_speed_10m_max":[12],
@@ -131,7 +131,7 @@ def test_date_specific_forecast_is_passed_to_provider(monkeypatch):
     r=RecommendationRequest(city="Calgary",children_ages=[2],visit_date=selected)
     c=activity("park","outdoor")
     out,w=asyncio.run(add_weather([c],r))
-    assert called==[("calgary",selected.isoformat())]
+    assert called==[("banff",selected.isoformat())]
     assert selected.isoformat() in out[0].weather_summary
     assert w is None
 
