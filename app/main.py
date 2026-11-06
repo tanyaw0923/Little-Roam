@@ -6,6 +6,7 @@ from .discovery import discover
 from .recommend import recommend
 from .driving import filter_by_driving_time
 from .weather import add_weather
+from .postal import resolve_postal_origin
 
 app=FastAPI(title='Little Roam Recommendation API',version='0.1.0')
 
@@ -15,6 +16,9 @@ def health():
 
 @app.post('/api/v1/recommendations',response_model=RecommendationResponse)
 async def recommendations(payload:RecommendationRequest):
+    if payload.search_scope == 'regional' and payload.postal_code:
+        lat, lon = await resolve_postal_origin(payload.postal_code, payload.province)
+        payload = payload.model_copy(update={'origin_latitude': lat, 'origin_longitude': lon})
     mode,candidates=await discover(payload)
     candidates=await filter_by_driving_time(candidates,payload)
     candidates,weather_warning=await add_weather(candidates,payload)
@@ -24,7 +28,7 @@ async def recommendations(payload:RecommendationRequest):
               'Unknown price is excluded from free-only requests; age and facility information may be incomplete.',
               'Weather is an optional same-day forecast, not live conditions or a safety assessment; opening hours remain unverified.']
     if payload.search_scope == 'regional':
-        warnings.append('Driving durations are Google Routes traffic-unaware estimates from an approximate city centre, not from a family home or live traffic. At most 10 candidate routes are evaluated; missing-coordinate and unavailable routes are excluded.')
+        warnings.append('Driving durations are Google Routes traffic-unaware estimates from an approximate postal-code area (when provided), otherwise a city centre; not from a home address or live traffic. At most 10 candidate routes are evaluated; missing-coordinate and unavailable routes are excluded.')
     if weather_warning:
         warnings.append(weather_warning)
     if len(results)<payload.max_results:
