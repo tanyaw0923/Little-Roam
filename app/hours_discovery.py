@@ -216,15 +216,39 @@ def fetch_official_page(client, url, hosts):
         return b"".join(chunks).decode("utf-8", errors="replace")
 
 
+def candidate_hours_urls(row):
+    """Find official City facility-hours pages from known URL conventions.
+
+    Only for the Calgary recreation-facilities source. The actual page still
+    must pass official host checks and exact venue-title validation.
+    """
+    original = [row.get("website_url"), row.get("source_url")]
+    derived = []
+    name = str(row.get("name") or "").strip()
+    if (row.get("source_id") == "calgary_recreation_facilities"
+            and re.fullmatch(r"[A-Za-z0-9 '\\-]+ Arena", name, flags=re.I)):
+        stem = re.sub(r"[^a-z0-9]+", "-", re.sub(r"\\s+Arena$", "", name, flags=re.I).lower()).strip("-")
+        if stem:
+            derived.append("https://www.calgary.ca/rec-locations/arenas/" + stem + "-hours.html")
+    # Prefer a known venue-specific hours page, not generic open-data websites.
+    explicit = [u for u in original if isinstance(u, str)
+                and "/rec-locations/" in urlparse(u).path
+                and ("hours" in urlparse(u).path or "arena" in urlparse(u).path)]
+    return tuple(dict.fromkeys([*explicit, *derived, *original]))
+
+
 def discover_row(client, row, hosts):
     """At most one approved URL per activity; no crawling or guessing."""
-    urls = (row.get("website_url"), row.get("source_url"))
+    urls = list(candidate_hours_urls(row))
     url = next((u for u in urls if safe_official_url(u, hosts)), None)
     if not url:
         return None   # Unapproved URLs are not fetched or queued.
     try:
         html = fetch_official_page(client, url, hosts)
         weekly = extract_structured_hours(html, row["name"])
+        if not weekly and urlparse(url).hostname in {"www.calgary.ca", "calgary.ca"}:
+            from .calgary_hours import parse_calgary_facility_hours
+            weekly = parse_calgary_facility_hours(html, row["name"])
         status = "pending_review" if weekly else "no_structured_hours"
     except (httpx.HTTPError, ValueError, OSError):
         weekly, status = [], "fetch_failed"
