@@ -38,7 +38,7 @@ async def verify_hours(candidates):
     """Fail-open, bounded hours lookup. Returns updated items and a warning."""
     if os.getenv("HOURS_PROVIDER","off").lower()!="google_places":
         return candidates,None
-    key=os.getenv("GOOGLE_PLACES_API_KEY")
+    key=os.getenv("GOOGLE_MAPS_API_KEY")
     if not key:
         return candidates,"Hours verification not configured; hours status is unknown."
     # Only provider-backed IDs: curated attractions must be deliberately linked.
@@ -61,9 +61,7 @@ async def verify_hours(candidates):
             updated[index]=updated[index].model_copy(update={
                 "hours_status":status,
                 "hours_checked_at":checked,
-                "hours_source_url":"https://maps.google.com/?cid=" + updated[index].google_place_id
-                if updated[index].google_place_id.isdigit() else
-                "https://www.google.com/maps/search/?api=1&query=Google&query_place_id=" + updated[index].google_place_id,
+                "hours_source_url":"https://www.google.com/maps/search/?api=1&query=Google&query_place_id=" + updated[index].google_place_id,
             })
     missing=sum(x is None for _,x in results)
     return updated, ("Some operating hours could not be confirmed and remain unknown." if missing else None)
