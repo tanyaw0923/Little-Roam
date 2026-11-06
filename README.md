@@ -2,7 +2,7 @@
 
 **AI-powered family activity discovery for Canadian families.**
 
-Little Roam is an early-stage Python/FastAPI backend that recommends family outings by location, children's ages, interests, indoor/outdoor preference, and price category. It starts in Calgary, Alberta, and is designed to expand across Canada.
+Little Roam is an early-stage Python/FastAPI backend that recommends family outings by location, children's ages, interests, indoor/outdoor preference, and price category. It starts in Calgary, Alberta, and is designed to expand across Canada. Regional searches can use an Alberta postal-code area as the driving origin.
 
 ## Project status
 
@@ -13,6 +13,7 @@ Little Roam is an early-stage Python/FastAPI backend that recommends family outi
 - ✅ Calgary-specific importer is committed in `app/calgary_import.py`
 - ✅ Calgary Cloud Run daily importer deployed and Scheduler trigger configured (as reported in deployment setup)
 - ✅ Optional weather-aware ranking implemented in GitHub (not yet live-tested or deployed)
+- ✅ Alberta postal-code origin, additional Bow Valley venue seed, and optional hours verification implemented in code (live integration not yet validated)
 - ⏳ Public website not yet deployed
 
 > The API is a working MVP, not a fully verified production activity recommender. Opening hours, prices and age suitability are not yet comprehensively verified. Regional routing is optional and only supports Calgary, Canmore and Banff origins.
@@ -29,6 +30,8 @@ FastAPI /api/v1/recommendations
        +-- Python ranking and optional OpenAI-generated explanations
        +-- Optional Google Places API (live discovery; not cached permanently)
        +-- Optional Open-Meteo same-day forecasts (evaluation/non-commercial use)
+       +-- Optional Geocoding API (Alberta postal-code origin)
+       +-- Optional Places Details (reported venue hours)
        
 Approved activity data -> validation/upsert -> PostgreSQL
                           ^
@@ -41,6 +44,8 @@ Approved activity data -> validation/upsert -> PostgreSQL
 | Database | Supabase PostgreSQL + psycopg |
 | Recommendations | Python matching/ranking, optional OpenAI and weather adjustment |
 | Place discovery | Google Places API (New), optional |
+| Postal-code origin | Google Geocoding API (optional, paid) |
+| Operating hours | Google Places Details (optional, paid) |
 | Hosting | GCP Cloud Run |
 | Scheduled updates | Cloud Run Jobs + Cloud Scheduler (Calgary configured) |
 | Testing | pytest |
@@ -158,6 +163,33 @@ python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
 Run `POST /api/v1/recommendations` in Swagger. Returned activities may include `weather_summary` and `weather_source`. Do not present this forecast as confirmation that an outdoor activity is safe, open, or suitable for a child. Set `WEATHER_PROVIDER=off` to disable the feature.
 
+## Postal-code regional search and opening hours (prototype)
+
+Regional requests can now include an **Alberta postal code** (example: `T2P 1J9`). The backend geocodes that approximate postal area, then uses Google Routes for drive times to **at most ten candidate attractions**. City-centre fallback continues to work when no postal code is supplied. Postal codes are not stored in the activity database or passed to the optional OpenAI explanation.
+
+```json
+{
+  "city": "Calgary",
+  "province": "AB",
+  "postal_code": "T2P 1J9",
+  "search_scope": "regional",
+  "max_drive_minutes": 120,
+  "children_ages": [2, 6],
+  "interests": ["nature", "playground"],
+  "activity_type": "any",
+  "budget": "any",
+  "max_results": 10
+}
+```
+
+`GOOGLE_GEOCODING_API_KEY` must be a **separate Geocoding API-restricted key**; it is not interchangeable with the Routes-only key. Invalid or unverified postal codes return an error rather than a made-up location. Use the detailed [Postal/Bow Valley/Hours guide](POSTAL_BOW_VALLEY_HOURS.md).
+
+The [Bow Valley seed](sql/seed_bow_valley.sql) now includes **12 official-source Canmore/Banff attractions**. Reapply the SQL to Supabase to add the six new venues. The additional six do not yet have verified coordinates and will appear only in city-specific searches until they are geolocated from an authorized source; the original six have a separate [coordinate backfill](sql/backfill_bow_valley_coordinates.sql).
+
+Operating hours are optional with `HOURS_PROVIDER=google_places` and a separate Places API-restricted `GOOGLE_MAPS_API_KEY`. The returned venue may have `hours_status`, `published_weekly_hours`, `hours_checked_at` and `hours_source_url`. If no exact Google Place ID is available, the result explicitly remains `unknown`. For curated Supabase activities, apply [the optional vetted Place ID mapping table](sql/activity_place_mappings.sql) and link only reviewed IDs. **These are venue hours, not a promise of an activity or class being offered.** Places Details hours use paid Enterprise-tier fields; the number of calls is capped at ten per request.
+
+These features are implemented in GitHub, but the Geocoding and Places integrations are **not yet verified against live services or deployed**. Leave the daily Calgary importer untouched.
+
 ## Activity ingestion and daily refresh
 
 - `app/refresh.py` reads an authorized HTTPS JSON activity feed and upserts records using stable IDs.
@@ -199,11 +231,11 @@ Little Roam is an independent project for Canadian families.
 
 ## Bow Valley: Canmore and Banff
 
-The repository includes an idempotent [Canmore and Banff venue seed](sql/seed_bow_valley.sql) and a [guide to official town data sources](BOW_VALLEY_DATA_SOURCES.md). Apply the SQL to Supabase for initial coverage. The six curated venues are not yet automatically refreshed; town event calendars require a separate dated-events model and access/licensing review. Single-city search is the default; optional regional mode supports driving-time searches.
+The repository includes an idempotent [12-venue Canmore and Banff seed](sql/seed_bow_valley.sql) and a [guide to official town data sources](BOW_VALLEY_DATA_SOURCES.md). Apply the SQL to Supabase for initial coverage. The curated venues are not yet automatically refreshed; town event calendars require a separate dated-events model and access/licensing review. Single-city search is the default; optional regional mode supports driving-time searches.
 
 ## Regional recommendations by driving time
 
-The backend supports a **30-, 60-, or 120-minute** regional driving preference from an approximate Calgary, Canmore, or Banff centre. It uses the paid Google Routes API; the existing single-city search remains the default and does **not** require a Routes key.
+The backend supports a **30-, 60-, or 120-minute** regional driving preference from a geocoded Alberta postal-code area, or from an approximate Calgary, Canmore, or Banff centre if no postal code is provided. It uses the paid Google Routes API; the existing single-city search remains the default and does **not** require a Routes key.
 
 ```json
 {
@@ -219,12 +251,12 @@ The backend supports a **30-, 60-, or 120-minute** regional driving preference f
 }
 ```
 
-For regional results, `drive_minutes` is the traffic-unaware Google driving duration and `distance_km` is road distance. These are calculated **from an approximate town centre**, not from the family's actual location. No route, unknown coordinates, or a failed Routes call will ever be replaced with a guessed drive time.
+For regional results, `drive_minutes` is the traffic-unaware Google driving duration and `distance_km` is road distance. Without a postal code, these are calculated **from an approximate town centre**. With a postal code, they are calculated from the approximate postal area—not the family's exact address. No route, unknown coordinates, or a failed Routes call will ever be replaced with a guessed drive time.
 
 To enable:
 1. Use `PLACES_PROVIDER=postgres` and your Supabase `DATABASE_URL`.
 2. Run the [Bow Valley seed](sql/seed_bow_valley.sql) and [coordinate backfill](sql/backfill_bow_valley_coordinates.sql) if not already applied.
-3. Enable Google Routes API and supply `GOOGLE_ROUTES_API_KEY` securely through GCP Secret Manager.
+3. For postal-code searches, also enable Geocoding API and configure a restricted GOOGLE_GEOCODING_API_KEY (see guide). Enable Google Routes API and supply `GOOGLE_ROUTES_API_KEY` securely through GCP Secret Manager.
 4. Execute the tests, then redeploy the **FastAPI Cloud Run service**. The existing Calgary daily importer and Cloud Scheduler trigger remain unchanged.
 
 See [DRIVING_TIME_SEARCH.md](DRIVING_TIME_SEARCH.md) for complete setup, API quota/cost controls and limitations. To bound costs, the MVP routes at most **10 candidate destinations per search**; this may omit relevant venues. Driving times are not traffic-aware or departure-time-specific. Nationwide origins and postal-code routing are future work.
