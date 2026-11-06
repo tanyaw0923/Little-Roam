@@ -57,6 +57,8 @@ def parse_details(data: dict, place_id: str, want_websites: bool, want_hours: bo
         if status != "unknown" or descriptions:
             result.update(
                 hours_status=status,
+                hours_status_source="google_places" if status != "unknown" else "unknown",
+                hours_source="google_places",
                 published_weekly_hours=descriptions,
                 hours_checked_at=datetime.now(timezone.utc).isoformat(),
                 hours_source_url=("https://www.google.com/maps/search/?api=1&query=venue"
