@@ -101,5 +101,5 @@ def test_official_hours_response_serialization():
     expected = ["Monday: 8:30 a.m. - 8:30 p.m."] if alberta_today.weekday() == 0 else []
     assert result["published_weekly_hours"] == expected
     assert result["visit_day_hours"] == (expected[0] if expected else None)
-    assert result["hours_schedule_verified"] is bool(expected)
+    assert result["hours_verified"] is bool(expected)
     assert "hours_for_visit_date" not in result
