@@ -88,16 +88,19 @@ async def enrich_place_details(candidates):
     key = os.getenv("GOOGLE_MAPS_API_KEY")
     if not key:
         return result, "Google Places key unavailable; website or hours details remain unknown."
-    # Request hours for mapped venues, website only when the curated URL is missing.
+    # Approved official schedules take precedence; Google hours are fallback only.
+    # Website details remain optional even when official hours exist.
     targets = [
-        (index, c.google_place_id, bool(want_websites and not valid_website_url(c.website_url)), want_hours)
+        (index, c.google_place_id, bool(want_websites and not valid_website_url(c.website_url)),
+         bool(want_hours and c.hours_source == "unknown"))
         for index, c in enumerate(result)
         if isinstance(c.google_place_id, str)
         and PLACE_ID_PATTERN.fullmatch(c.google_place_id)
-        and (want_hours or (want_websites and not valid_website_url(c.website_url)))
+        and ((want_hours and c.hours_source == "unknown")
+             or (want_websites and not valid_website_url(c.website_url)))
     ][:MAX_DETAILS_LOOKUPS]
     if not targets:
-        if want_hours and any(c.google_place_id is None for c in result):
+        if want_hours and any(c.google_place_id is None and c.hours_source == "unknown" for c in result):
             return result, "Some venues lack verified Google Place IDs; operating hours remain unknown."
         return result, None
     async with httpx.AsyncClient(timeout=10) as client:
