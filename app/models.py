@@ -7,7 +7,6 @@ Budget = Literal['any','free','paid']
 
 class RecommendationRequest(BaseModel):
     city: str = Field(min_length=2, max_length=80)
-    province: Province
     children_ages: list[int] = Field(min_length=1, max_length=8)
     interests: list[str] = Field(default_factory=list, max_length=12)
     activity_type: ActivityType = 'any'
@@ -17,6 +16,11 @@ class RecommendationRequest(BaseModel):
     _resolved_origin: tuple[float,float] | None = PrivateAttr(default=None)
     max_drive_minutes: Literal[30, 60, 120] = 60
     max_results: int = Field(default=10, ge=1, le=10)
+
+    @property
+    def province(self) -> Province:
+        """Internal province for the Alberta-only MVP; not a user input field."""
+        return 'AB'
 
     @model_validator(mode='after')
     def ensure_regional_origin(self):
